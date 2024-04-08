@@ -5,6 +5,7 @@ build_lib(
     helper/on-off-helper.cc
     helper/packet-sink-helper.cc
     helper/three-gpp-http-helper.cc
+    helper/VideoStreamHelper.cc
     helper/udp-client-server-helper.cc
     helper/udp-echo-helper.cc
     model/application-packet-probe.cc
@@ -19,6 +20,10 @@ build_lib(
     model/three-gpp-http-header.cc
     model/three-gpp-http-server.cc
     model/three-gpp-http-variables.cc
+    model/VideoStreamClient.cc
+    model/VideoStreamPCDN.cc
+    model/VideoStreamServer.cc
+    model/VideoStreamHeader.cc
     model/udp-client.cc
     model/udp-echo-client.cc
     model/udp-echo-server.cc
@@ -29,6 +34,7 @@ build_lib(
     helper/on-off-helper.h
     helper/packet-sink-helper.h
     helper/three-gpp-http-helper.h
+    helper/VideoStreamHelper.h
     helper/udp-client-server-helper.h
     helper/udp-echo-helper.h
     model/application-packet-probe.h
@@ -43,14 +49,20 @@ build_lib(
     model/three-gpp-http-header.h
     model/three-gpp-http-server.h
     model/three-gpp-http-variables.h
+    model/VideoStreamClient.h
+    model/VideoStreamPCDN.h
+    model/VideoStreamServer.h
+    model/VideoStreamHeader.h
     model/udp-client.h
     model/udp-echo-client.h
     model/udp-echo-server.h
     model/udp-server.h
     model/udp-trace-client.h
   LIBRARIES_TO_LINK ${libinternet}
+                    ${libstats}
   TEST_SOURCES
     test/three-gpp-http-client-server-test.cc
     test/bulk-send-application-test-suite.cc
     test/udp-client-server-test.cc
 )
+
