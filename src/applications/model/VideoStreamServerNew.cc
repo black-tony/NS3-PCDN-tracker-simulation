@@ -409,6 +409,7 @@ VideoStreamServerNew::ReceivedDataCallback(Ptr<Socket> socket)
         switch (httpHeader.GetContentType())
         {
         case ThreeGppHttpHeader::MAIN_OBJECT:
+
             processingDelay = m_httpVariables->GetMainObjectGenerationDelay();
             NS_LOG_INFO(this << " Server " << " Will finish generating a main object"
                              << " in " << processingDelay.As(Time::S) << ".");
@@ -420,12 +421,16 @@ VideoStreamServerNew::ReceivedDataCallback(Ptr<Socket> socket)
                 //                 << " received from " << InetSocketAddress::ConvertFrom(from).GetIpv4()
                 //                 << " port " << InetSocketAddress::ConvertFrom(from).GetPort() << " / "
                 //                 << InetSocketAddress::ConvertFrom(from));
-                m_txBuffer->RecordNextServe(socket,
-                                        Simulator::Schedule(processingDelay,
-                                                            &VideoStreamServerNew::ServeNewMainObject,
-                                                            this,
-                                                            socket, from, vHeader.GetContentType() == VideoStreamHeader::VIDEO_NAK),
-                                        httpHeader.GetClientTs());
+                
+                OnServerRecv(socket, from, vHeader);
+
+                
+                // m_txBuffer->RecordNextServe(socket,
+                //                         Simulator::Schedule(processingDelay,
+                //                                             &VideoStreamServerNew::ServeNewMainObject,
+                //                                             this,
+                //                                             socket, from, vHeader.GetContentType() == VideoStreamHeader::VIDEO_NAK),
+                //                         httpHeader.GetClientTs());
             }
             else if (Inet6SocketAddress::IsMatchingType(from))
             {
@@ -435,6 +440,9 @@ VideoStreamServerNew::ReceivedDataCallback(Ptr<Socket> socket)
                 //                 << " received from " << Inet6SocketAddress::ConvertFrom(from).GetIpv6()
                 //                 << " port " << Inet6SocketAddress::ConvertFrom(from).GetPort() << " / "
                 //                 << Inet6SocketAddress::ConvertFrom(from));
+                
+                OnServerRecv(socket, from, vHeader);
+                
                 m_txBuffer->RecordNextServe(socket,
                                         Simulator::Schedule(processingDelay,
                                                             &VideoStreamServerNew::ServeNewMainObject,
@@ -453,16 +461,10 @@ VideoStreamServerNew::ReceivedDataCallback(Ptr<Socket> socket)
             break;
 
         case ThreeGppHttpHeader::EMBEDDED_OBJECT:
-            processingDelay = m_httpVariables->GetEmbeddedObjectGenerationDelay();
-            NS_LOG_INFO(this << " Server " << " Will finish generating an embedded object"
-                             << " in " << processingDelay.As(Time::S) << ".");
-            m_txBuffer->RecordNextServe(
-                socket,
-                Simulator::Schedule(processingDelay,
-                                    &VideoStreamServerNew::ServeNewEmbeddedObject,
-                                    this,
-                                    socket),
-                httpHeader.GetClientTs());
+            NS_FATAL_ERROR("Server Recieve EMBEDDED_OBJ packet which is not generated at all!");
+            // NS_LOG_INFO(this << " Server " << " Will finish generating an embedded object"
+            //                  << " in " << processingDelay.As(Time::S) << ".");
+           
             break;
 
         default:
@@ -523,6 +525,193 @@ VideoStreamServerNew::SendCallback(Ptr<Socket> socket, uint32_t availableBufferS
     } // end of `if (m_txBuffer->IsBufferEmpty (socket))`
 
 } // end of `void SendCallback (Ptr<Socket> socket, uint32_t availableBufferSize)`
+
+void
+VideoStreamServerNew::OnServerRecv(Ptr<Socket> socket,
+                                   const Address& from,
+                                   const VideoStreamHeader& vHeader)
+{
+    StreamID sid = vHeader.GetVideoNumber();
+    if(vHeader.GetContentType() == VideoStreamHeader::VIDEO_CREATE_SUB)
+    {
+        OnSubCreate(socket, from, sid);
+    }
+    else if(vHeader.GetContentType() == VideoStreamHeader::VIDEO_DESTORY_SUB)
+    {
+        OnSubDestory(socket, from, sid);
+    }
+    else
+    {
+        NS_FATAL_ERROR("Server Recv vHeader type " << vHeader.GetContentType() << " which is not used in server part");
+    }
+}
+
+void
+VideoStreamServerNew::OnSubCreate(Ptr<Socket> socket, Address from, StreamID sid)
+{
+    if(m_peerInfo.find(sid) == m_peerInfo.end())
+    {
+        m_peerInfo[sid] = std::set<Ptr<Socket>>();
+        NS_LOG_DEBUG("sid " << sid << "Not find in peerinfo, add new entry");
+    }
+
+    if (InetSocketAddress::IsMatchingType(from))
+    {
+        NS_LOG_DEBUG("insert " << InetSocketAddress::ConvertFrom(from).GetIpv4()
+                            << " port " << InetSocketAddress::ConvertFrom(from).GetPort() << " / "
+                            << InetSocketAddress::ConvertFrom(from) << " Into " << sid << "sub set");
+
+        // NS_LOG_INFO(this << " Server " << " A packet of " << packet->GetSize() << " bytes"
+        //                     << " received from " << InetSocketAddress::ConvertFrom(from).GetIpv4()
+        //                     << " port " << InetSocketAddress::ConvertFrom(from).GetPort() << " / "
+        //                     << InetSocketAddress::ConvertFrom(from));
+    }
+    else if (Inet6SocketAddress::IsMatchingType(from))
+    {
+
+        NS_LOG_DEBUG("insert " << Inet6SocketAddress::ConvertFrom(from).GetIpv6()
+                            << " port " << Inet6SocketAddress::ConvertFrom(from).GetPort() << " / "
+                            << Inet6SocketAddress::ConvertFrom(from) << " Into " << sid << "sub set");
+
+    }
+
+    m_peerInfo[sid].insert(socket);
+    if(m_serveStreamEvent.find(sid) == m_serveStreamEvent.end())
+    {
+        NS_LOG_DEBUG("sid " << sid << "Not find in serve list, add new buffer event");
+        m_serveStreamEvent[sid] = Simulator::Schedule(Seconds(1), &VideoStreamServerNew::OnBufferReady, this, sid);
+    }
+}
+
+void
+VideoStreamServerNew::OnSubDestory(Ptr<Socket> socket, Address from, StreamID sid)
+{
+    if(m_peerInfo.find(sid) != m_peerInfo.end())
+    {
+        if (InetSocketAddress::IsMatchingType(from))
+        {
+            NS_LOG_DEBUG("erase " << InetSocketAddress::ConvertFrom(from).GetIpv4()
+                                << " port " << InetSocketAddress::ConvertFrom(from).GetPort() << " / "
+                                << InetSocketAddress::ConvertFrom(from) << " from " << sid << "sub set");
+
+            // NS_LOG_INFO(this << " Server " << " A packet of " << packet->GetSize() << " bytes"
+            //                     << " received from " << InetSocketAddress::ConvertFrom(from).GetIpv4()
+            //                     << " port " << InetSocketAddress::ConvertFrom(from).GetPort() << " / "
+            //                     << InetSocketAddress::ConvertFrom(from));
+        }
+        else if (Inet6SocketAddress::IsMatchingType(from))
+        {
+
+            NS_LOG_DEBUG("erase " << Inet6SocketAddress::ConvertFrom(from).GetIpv6()
+                                << " port " << Inet6SocketAddress::ConvertFrom(from).GetPort() << " / "
+                                << Inet6SocketAddress::ConvertFrom(from) << " from " << sid << "sub set");
+
+        }
+        m_peerInfo[sid].erase(socket);
+        if(m_peerInfo[sid].empty())
+        {
+            NS_LOG_DEBUG("sid " << sid << " Now No Subs, erase the buffer cache");
+
+            m_peerInfo.erase(sid);
+            if(!m_serveStreamEvent[sid].IsExpired())
+                m_serveStreamEvent[sid].Cancel();
+            m_serveStreamEvent.erase(sid);
+        }
+    }
+    else
+    {
+        NS_LOG_DEBUG(sid << "Not Find in cache, subdestory do nothing");
+    }
+}
+
+void
+VideoStreamServerNew::OnBufferReady(StreamID sid)
+{
+    if(m_serveStreamEvent.find(sid) == m_serveStreamEvent.end())
+        NS_FATAL_ERROR("scheduled buffer ready event didnot find its source");
+    m_serveStreamEvent[sid] = Simulator::Schedule(Seconds(1), &VideoStreamServerNew::OnBufferReady, sid);
+    if(m_peerInfo.find(sid) == m_peerInfo.end())
+        NS_FATAL_ERROR("scheduled sid serve event didnot find its source");
+    for(auto i : m_peerInfo[sid])
+    {
+        m_txBuffer->RecordNextServe(i.first,
+                                        Simulator::ScheduleNow(
+                                                            &VideoStreamServerNew::ServeStream,
+                                                            this,
+                                                            i.first, i.second, sid),
+                                        Now());
+    }
+    // Simulator::ScheduleNow(&VideoStreamServerNew::ServeStream, sid);
+}
+
+void
+VideoStreamServerNew::ServeStream(Ptr<Socket> socket, Address from, StreamID sid)
+{
+    NS_LOG_FUNCTION(this << socket);
+
+    // const uint32_t objectSize = m_httpVariables->GetMainObjectSize();
+    uint32_t objectSize = m_bitrateSet[m_bitrateType];
+    objectSize = (uint32_t) objectSize * 4 * 1000 / 8;
+    NS_LOG_INFO(this << " Server " << " Main object to be served is " << objectSize << " bytes." << " Targeting is " << InetSocketAddress::ConvertFrom(from).GetIpv4() << ":" << InetSocketAddress::ConvertFrom(from).GetPort());
+
+    m_mainObjectTrace(objectSize);
+    if(!m_txBuffer->IsBufferEmpty(socket))
+    {
+        Simulator::Schedule(MilliSeconds(20), &VideoStreamServerNew::ServeNewMainObject, this, socket, from, videoNak);
+        return;
+    }
+
+    m_txBuffer->WriteNewObject(socket, ThreeGppHttpHeader::MAIN_OBJECT, objectSize);
+    uint32_t actualSent;
+    if(m_usingP2P)
+    {
+        if(findPeer)
+        {
+            uint8_t *buffer = new uint8_t[objectSize];
+            TagBuffer tbuffer(buffer, buffer + objectSize);
+            m_peerInfo[m_videoRequested].Serialize(tbuffer);
+            Ptr<Packet> packet = Create<Packet>(buffer, objectSize);
+            // Tag
+            // packet->AddPacketTag()
+            delete[] buffer;
+            actualSent = ServeFromTxBuffer(socket, packet);
+
+        }
+        else if(it != m_peerInfo.end() && it->second == from)
+        {
+            NS_LOG_INFO(this << " Server " << " recieve recorded peer " << from << " requesting" );
+            actualSent = ServeFromTxBuffer(socket);
+
+        }
+        else
+        {
+            if(!videoNak)
+            {
+                NS_LOG_INFO(this << " Server " << " add peer " << from << " with video number " << m_videoRequested);
+                m_peerInfo[m_videoRequested] = from;
+            }
+            else
+                NS_LOG_INFO(this << " Server " << " get requet from " << from << " with video number " << m_videoRequested << " and video Nak Tag");
+
+
+            actualSent = ServeFromTxBuffer(socket);
+        }
+    }
+    else
+    {
+        actualSent = ServeFromTxBuffer(socket);
+    }
+
+    if (actualSent < objectSize)
+    {
+        NS_LOG_INFO(this << " Server " << " Transmission of main object is suspended"
+                         << " after " << actualSent << " bytes.");
+    }
+    else
+    {
+        NS_LOG_INFO(this << " Server " << " Finished sending a whole main object.");
+    }
+}
 
 void
 VideoStreamServerNew::SetUsingPCDN(bool isUsePCDN)

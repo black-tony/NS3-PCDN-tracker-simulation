@@ -61,10 +61,12 @@ public:
   /// The possible types of content (default = NOT_SET).
   enum ContentType_t
   {
-    NOT_SET,         ///< Integer equivalent = 0.
+    VIDEO_NOT_SET,         ///< Integer equivalent = 0.
     VIDEO_CHUNK,     ///< Integer equivalent = 1.
     VIDEO_PEER,  ///< Integer equivalent = 2.
-    VIDEO_NAK ///< Integer equivalent = 3;
+    VIDEO_CREATE_SUB, ///< Integer equivalent = 3;
+    VIDEO_DESTORY_SUB, ///< Integer equivalent = 4;
+    VIDEO_MAX_TYPE
   };
 
 //   /**

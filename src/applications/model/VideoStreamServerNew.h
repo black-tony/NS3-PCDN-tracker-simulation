@@ -124,6 +124,8 @@ class VideoStreamServerNew : public Application
      */
     typedef void (*ThreeGppHttpObjectCallback)(uint32_t size);
 
+    typedef uint32_t StreamID;
+
     /**
      * Callback signature for `ConnectionEstablished` trace source.
      * \param httpServer Pointer to this instance of VideoStreamServerNew, which is where
@@ -194,28 +196,43 @@ class VideoStreamServerNew : public Application
 
     // TX-RELATED METHODS
 
+    void OnServerRecv(Ptr<Socket>socket, const Address& from, const VideoStreamHeader &vHeader);
+
     /**
-     * Generates a new main object and push it into the Tx buffer.
-     *
-     * The size of the object is randomly determined by ThreeGppHttpVariables.
-     * Fires the `MainObject` trace source. It then immediately triggers
-     * ServeFromTxBuffer() to send the object.
-     *
-     * \param socket Pointer to the socket which is associated with the
-     *               destination client.
+     * @brief 在有新的订阅时调用
+     * 
+     * @param socket not used
+     * @param from address
+     * @param sid stream id
      */
-    void ServeNewMainObject(Ptr<Socket> socket, Address from, bool videoNak);
+    void OnSubCreate(Ptr<Socket> socket, Address from, StreamID sid);
     /**
-     * Generates a new embedded object and push it into the Tx buffer.
-     *
-     * The size of the object is randomly determined by ThreeGppHttpVariables.
-     * Fires the `EmbeddedObject` trace source. It then immediately triggers
-     * ServeFromTxBuffer() to send the object.
-     *
-     * \param socket Pointer to the socket which is associated with the
-     *               destination client.
+     * @brief 在有cancel订阅时调用
+     * 
+     * @param socket 
+     * @param from 
+     * @param sid stream id
      */
-    void ServeNewEmbeddedObject(Ptr<Socket> socket);
+    void OnSubDestory(Ptr<Socket> socket, Address from, StreamID sid);
+    
+    //TODO : how to specify a stream
+    void OnBufferReady(StreamID sid);
+
+    //TODO : how to serve a stream: transmit some code 
+    void ServeStream(Ptr<Socket> socket, StreamID sid);
+
+
+    // /**
+    //  * Generates a new embedded object and push it into the Tx buffer.
+    //  *
+    //  * The size of the object is randomly determined by ThreeGppHttpVariables.
+    //  * Fires the `EmbeddedObject` trace source. It then immediately triggers
+    //  * ServeFromTxBuffer() to send the object.
+    //  *
+    //  * \param socket Pointer to the socket which is associated with the
+    //  *               destination client.
+    //  */
+    // void ServeNewEmbeddedObject(Ptr<Socket> socket);
     /**
      * Creates a packet out of a pending object in the Tx buffer send it over the
      * given socket. If the socket capacity is smaller than the object size, then
@@ -269,12 +286,12 @@ class VideoStreamServerNew : public Application
     uint32_t m_VideoChunkRequested;
     uint32_t m_bitrateSet[5];// = {350, 600, 1000, 2000, 3000};
     uint32_t m_videoChunkTotalNumber[2];// = {5, 10};
-    uint32_t m_usingP2P;
+    // uint32_t m_usingP2P;
     // TRACE SOURCES
 
-    // P2P peer
-    std::map<uint32_t, Address> m_peerInfo;
-
+    // 流ID->需要传输的地址集合
+    std::map<StreamID, std::set<std::pair<Ptr<Socket>, Address>>> m_peerInfo;
+    std::map<StreamID, EventId> m_serveStreamEvent;
     /// The `ConnectionEstablished` trace source.
     TracedCallback<Ptr<const VideoStreamServerNew>, Ptr<Socket>> m_connectionEstablishedTrace;
     /// The `MainObject` trace source.

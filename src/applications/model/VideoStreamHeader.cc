@@ -32,7 +32,7 @@ NS_OBJECT_ENSURE_REGISTERED (VideoStreamHeader);
 
 VideoStreamHeader::VideoStreamHeader ()
   : Header (),
-  m_contentType (NOT_SET),
+  m_contentType (VIDEO_NOT_SET),
 //   m_contentLength (0),
 //   m_clientTs (0),
 //   m_serverTs (0),
@@ -191,23 +191,14 @@ void
 VideoStreamHeader::SetContentType (VideoStreamHeader::ContentType_t contentType)
 {
   NS_LOG_FUNCTION (this << static_cast<uint16_t> (contentType));
-  switch (contentType)
-    {
-    case NOT_SET:
-      m_contentType = 0;
-      break;
-    case VIDEO_CHUNK:
-      m_contentType = 1;
-      break;
-    case VIDEO_PEER:
-      m_contentType = 2;
-      break;
-    case VIDEO_NAK:
-      m_contentType = 3;
-    default:
-      NS_FATAL_ERROR ("Unknown Content-Type: " << contentType);
-      break;
-    }
+  if(contentType >= VIDEO_NOT_SET && contentType < VIDEO_MAX_TYPE)
+  {
+    m_contentType = (ContentType_t) contentType;
+  }
+  else
+  {
+    NS_FATAL_ERROR ("Unknown Content-Type: " << contentType);
+  }
 }
 
 
@@ -215,23 +206,14 @@ VideoStreamHeader::ContentType_t
 VideoStreamHeader::GetContentType () const
 {
   ContentType_t ret;
-  switch (m_contentType)
-    {
-    case 0:
-      ret = NOT_SET;
-      break;
-    case 1:
-      ret = VIDEO_CHUNK;
-      break;
-    case 2:
-      ret = VIDEO_PEER;
-      break;
-    case 3:
-      ret = VIDEO_NAK;
-    default:
-      NS_FATAL_ERROR ("Unknown Content-Type: " << m_contentType);
-      break;
-    }
+  if(m_contentType >= VIDEO_NOT_SET && m_contentType < VIDEO_MAX_TYPE)
+  {
+    ret = (ContentType_t) m_contentType;
+  }
+  else
+  {
+    NS_FATAL_ERROR ("Unknown Content-Type: " << m_contentType);
+  }
   return ret;
 }
 
