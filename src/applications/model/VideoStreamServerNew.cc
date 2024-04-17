@@ -28,7 +28,7 @@ namespace ns3
 // HTTP SERVER ////////////////////////////////////////////////////////////////
 
 NS_OBJECT_ENSURE_REGISTERED(VideoStreamServerNew);
-
+using std::make_pair;
 VideoStreamServerNew::VideoStreamServerNew()
     : m_state(NOT_STARTED),
       m_initialSocket(nullptr),
@@ -44,7 +44,7 @@ VideoStreamServerNew::VideoStreamServerNew()
 
     m_videoChunkTotalNumber[0] = 5;
     m_videoChunkTotalNumber[1] = 10;
-    m_usingP2P = 0;
+    // m_usingP2P = 0;
     m_mtuSize = m_httpVariables->GetMtuSize();
     m_mtuSize = 1460;
 
@@ -443,12 +443,12 @@ VideoStreamServerNew::ReceivedDataCallback(Ptr<Socket> socket)
                 
                 OnServerRecv(socket, from, vHeader);
                 
-                m_txBuffer->RecordNextServe(socket,
-                                        Simulator::Schedule(processingDelay,
-                                                            &VideoStreamServerNew::ServeNewMainObject,
-                                                            this,
-                                                            socket, from, vHeader.GetContentType() == VideoStreamHeader::VIDEO_NAK),
-                                        httpHeader.GetClientTs());
+                // m_txBuffer->RecordNextServe(socket,
+                //                         Simulator::Schedule(processingDelay,
+                //                                             &VideoStreamServerNew::ServeNewMainObject,
+                //                                             this,
+                //                                             socket, from, vHeader.GetContentType() == VideoStreamHeader::VIDEO_NAK),
+                //                         httpHeader.GetClientTs());
             }
             // m_txBuffer->RecordNextServe(socket,
             //                             Simulator::Schedule(processingDelay,
@@ -551,7 +551,7 @@ VideoStreamServerNew::OnSubCreate(Ptr<Socket> socket, Address from, StreamID sid
 {
     if(m_peerInfo.find(sid) == m_peerInfo.end())
     {
-        m_peerInfo[sid] = std::set<Ptr<Socket>>();
+        m_peerInfo[sid] = std::set<std::pair<Ptr<Socket>, Address>>();
         NS_LOG_DEBUG("sid " << sid << "Not find in peerinfo, add new entry");
     }
 
@@ -575,7 +575,7 @@ VideoStreamServerNew::OnSubCreate(Ptr<Socket> socket, Address from, StreamID sid
 
     }
 
-    m_peerInfo[sid].insert(socket);
+    m_peerInfo[sid].insert(make_pair(socket, from));
     if(m_serveStreamEvent.find(sid) == m_serveStreamEvent.end())
     {
         NS_LOG_DEBUG("sid " << sid << "Not find in serve list, add new buffer event");
@@ -607,7 +607,7 @@ VideoStreamServerNew::OnSubDestory(Ptr<Socket> socket, Address from, StreamID si
                                 << Inet6SocketAddress::ConvertFrom(from) << " from " << sid << "sub set");
 
         }
-        m_peerInfo[sid].erase(socket);
+        m_peerInfo[sid].erase(make_pair(socket, from));
         if(m_peerInfo[sid].empty())
         {
             NS_LOG_DEBUG("sid " << sid << " Now No Subs, erase the buffer cache");
@@ -629,7 +629,7 @@ VideoStreamServerNew::OnBufferReady(StreamID sid)
 {
     if(m_serveStreamEvent.find(sid) == m_serveStreamEvent.end())
         NS_FATAL_ERROR("scheduled buffer ready event didnot find its source");
-    m_serveStreamEvent[sid] = Simulator::Schedule(Seconds(1), &VideoStreamServerNew::OnBufferReady, sid);
+    m_serveStreamEvent[sid] = Simulator::Schedule(Seconds(1), &VideoStreamServerNew::OnBufferReady, this, sid);
     if(m_peerInfo.find(sid) == m_peerInfo.end())
         NS_FATAL_ERROR("scheduled sid serve event didnot find its source");
     for(auto i : m_peerInfo[sid])
@@ -639,7 +639,7 @@ VideoStreamServerNew::OnBufferReady(StreamID sid)
                                                             &VideoStreamServerNew::ServeStream,
                                                             this,
                                                             i.first, i.second, sid),
-                                        Now());
+                                        Simulator::Now());
     }
     // Simulator::ScheduleNow(&VideoStreamServerNew::ServeStream, sid);
 }
@@ -657,51 +657,13 @@ VideoStreamServerNew::ServeStream(Ptr<Socket> socket, Address from, StreamID sid
     m_mainObjectTrace(objectSize);
     if(!m_txBuffer->IsBufferEmpty(socket))
     {
-        Simulator::Schedule(MilliSeconds(20), &VideoStreamServerNew::ServeNewMainObject, this, socket, from, videoNak);
+        Simulator::Schedule(MilliSeconds(20), &VideoStreamServerNew::ServeStream, this, socket, from, sid);
         return;
     }
 
     m_txBuffer->WriteNewObject(socket, ThreeGppHttpHeader::MAIN_OBJECT, objectSize);
     uint32_t actualSent;
-    if(m_usingP2P)
-    {
-        if(findPeer)
-        {
-            uint8_t *buffer = new uint8_t[objectSize];
-            TagBuffer tbuffer(buffer, buffer + objectSize);
-            m_peerInfo[m_videoRequested].Serialize(tbuffer);
-            Ptr<Packet> packet = Create<Packet>(buffer, objectSize);
-            // Tag
-            // packet->AddPacketTag()
-            delete[] buffer;
-            actualSent = ServeFromTxBuffer(socket, packet);
-
-        }
-        else if(it != m_peerInfo.end() && it->second == from)
-        {
-            NS_LOG_INFO(this << " Server " << " recieve recorded peer " << from << " requesting" );
-            actualSent = ServeFromTxBuffer(socket);
-
-        }
-        else
-        {
-            if(!videoNak)
-            {
-                NS_LOG_INFO(this << " Server " << " add peer " << from << " with video number " << m_videoRequested);
-                m_peerInfo[m_videoRequested] = from;
-            }
-            else
-                NS_LOG_INFO(this << " Server " << " get requet from " << from << " with video number " << m_videoRequested << " and video Nak Tag");
-
-
-            actualSent = ServeFromTxBuffer(socket);
-        }
-    }
-    else
-    {
-        actualSent = ServeFromTxBuffer(socket);
-    }
-
+    actualSent = ServeFromTxBuffer(socket);
     if (actualSent < objectSize)
     {
         NS_LOG_INFO(this << " Server " << " Transmission of main object is suspended"
@@ -713,114 +675,114 @@ VideoStreamServerNew::ServeStream(Ptr<Socket> socket, Address from, StreamID sid
     }
 }
 
-void
-VideoStreamServerNew::SetUsingPCDN(bool isUsePCDN)
-{
-    if(isUsePCDN)
-        m_usingP2P = 1;
-    else
-        m_usingP2P = 0;
-    return;
-}
+// void
+// VideoStreamServerNew::SetUsingPCDN(bool isUsePCDN)
+// {
+//     if(isUsePCDN)
+//         m_usingP2P = 1;
+//     else
+//         m_usingP2P = 0;
+//     return;
+// }
 
-void
-VideoStreamServerNew::ServeNewMainObject(Ptr<Socket> socket, Address from, bool videoNak)
-{
-    NS_LOG_FUNCTION(this << socket);
+// void
+// VideoStreamServerNew::ServeNewMainObject(Ptr<Socket> socket, Address from, bool videoNak)
+// {
+//     NS_LOG_FUNCTION(this << socket);
 
-    // const uint32_t objectSize = m_httpVariables->GetMainObjectSize();
-    uint32_t objectSize = m_bitrateSet[m_bitrateType];
-    objectSize = (uint32_t) objectSize * 4 * 1000 / 8;
-    bool findPeer = false;
-    auto it = m_peerInfo.find(m_videoRequested);
+//     // const uint32_t objectSize = m_httpVariables->GetMainObjectSize();
+//     uint32_t objectSize = m_bitrateSet[m_bitrateType];
+//     objectSize = (uint32_t) objectSize * 4 * 1000 / 8;
+//     bool findPeer = false;
+//     auto it = m_peerInfo.find(m_videoRequested);
 
-    if(it != m_peerInfo.end() && it->second != from)
-    {
-        objectSize = m_peerInfo[m_videoRequested].GetSerializedSize();
-        findPeer = true;
-    }
-    NS_LOG_INFO(this << " Server " << " Main object to be served is " << objectSize << " bytes." << " Targeting is " << InetSocketAddress::ConvertFrom(from).GetIpv4() << ":" << InetSocketAddress::ConvertFrom(from).GetPort());
+//     if(it != m_peerInfo.end() && it->second != from)
+//     {
+//         objectSize = m_peerInfo[m_videoRequested].GetSerializedSize();
+//         findPeer = true;
+//     }
+//     NS_LOG_INFO(this << " Server " << " Main object to be served is " << objectSize << " bytes." << " Targeting is " << InetSocketAddress::ConvertFrom(from).GetIpv4() << ":" << InetSocketAddress::ConvertFrom(from).GetPort());
 
-    m_mainObjectTrace(objectSize);
-    if(!m_txBuffer->IsBufferEmpty(socket))
-    {
-        Simulator::Schedule(MilliSeconds(20), &VideoStreamServerNew::ServeNewMainObject, this, socket, from, videoNak);
-        return;
-    }
+//     m_mainObjectTrace(objectSize);
+//     if(!m_txBuffer->IsBufferEmpty(socket))
+//     {
+//         Simulator::Schedule(MilliSeconds(20), &VideoStreamServerNew::ServeNewMainObject, this, socket, from, videoNak);
+//         return;
+//     }
 
-    m_txBuffer->WriteNewObject(socket, ThreeGppHttpHeader::MAIN_OBJECT, objectSize);
-    uint32_t actualSent;
-    if(m_usingP2P)
-    {
-        if(findPeer)
-        {
-            uint8_t *buffer = new uint8_t[objectSize];
-            TagBuffer tbuffer(buffer, buffer + objectSize);
-            m_peerInfo[m_videoRequested].Serialize(tbuffer);
-            Ptr<Packet> packet = Create<Packet>(buffer, objectSize);
-            // Tag
-            // packet->AddPacketTag()
-            delete[] buffer;
-            actualSent = ServeFromTxBuffer(socket, packet);
+//     m_txBuffer->WriteNewObject(socket, ThreeGppHttpHeader::MAIN_OBJECT, objectSize);
+//     uint32_t actualSent;
+//     if(m_usingP2P)
+//     {
+//         if(findPeer)
+//         {
+//             uint8_t *buffer = new uint8_t[objectSize];
+//             TagBuffer tbuffer(buffer, buffer + objectSize);
+//             m_peerInfo[m_videoRequested].Serialize(tbuffer);
+//             Ptr<Packet> packet = Create<Packet>(buffer, objectSize);
+//             // Tag
+//             // packet->AddPacketTag()
+//             delete[] buffer;
+//             actualSent = ServeFromTxBuffer(socket, packet);
 
-        }
-        else if(it != m_peerInfo.end() && it->second == from)
-        {
-            NS_LOG_INFO(this << " Server " << " recieve recorded peer " << from << " requesting" );
-            actualSent = ServeFromTxBuffer(socket);
+//         }
+//         else if(it != m_peerInfo.end() && it->second == from)
+//         {
+//             NS_LOG_INFO(this << " Server " << " recieve recorded peer " << from << " requesting" );
+//             actualSent = ServeFromTxBuffer(socket);
 
-        }
-        else
-        {
-            if(!videoNak)
-            {
-                NS_LOG_INFO(this << " Server " << " add peer " << from << " with video number " << m_videoRequested);
-                m_peerInfo[m_videoRequested] = from;
-            }
-            else
-                NS_LOG_INFO(this << " Server " << " get requet from " << from << " with video number " << m_videoRequested << " and video Nak Tag");
+//         }
+//         else
+//         {
+//             if(!videoNak)
+//             {
+//                 NS_LOG_INFO(this << " Server " << " add peer " << from << " with video number " << m_videoRequested);
+//                 m_peerInfo[m_videoRequested] = from;
+//             }
+//             else
+//                 NS_LOG_INFO(this << " Server " << " get requet from " << from << " with video number " << m_videoRequested << " and video Nak Tag");
 
 
-            actualSent = ServeFromTxBuffer(socket);
-        }
-    }
-    else
-    {
-        actualSent = ServeFromTxBuffer(socket);
-    }
+//             actualSent = ServeFromTxBuffer(socket);
+//         }
+//     }
+//     else
+//     {
+//         actualSent = ServeFromTxBuffer(socket);
+//     }
 
-    if (actualSent < objectSize)
-    {
-        NS_LOG_INFO(this << " Server " << " Transmission of main object is suspended"
-                         << " after " << actualSent << " bytes.");
-    }
-    else
-    {
-        NS_LOG_INFO(this << " Server " << " Finished sending a whole main object.");
-    }
-}
+//     if (actualSent < objectSize)
+//     {
+//         NS_LOG_INFO(this << " Server " << " Transmission of main object is suspended"
+//                          << " after " << actualSent << " bytes.");
+//     }
+//     else
+//     {
+//         NS_LOG_INFO(this << " Server " << " Finished sending a whole main object.");
+//     }
+// }
 
-void
-VideoStreamServerNew::ServeNewEmbeddedObject(Ptr<Socket> socket)
-{
-    NS_LOG_FUNCTION(this << socket);
+// void
+// VideoStreamServerNew::ServeNewEmbeddedObject(Ptr<Socket> socket)
+// {
+//     NS_LOG_FUNCTION(this << socket);
 
-    const uint32_t objectSize = m_httpVariables->GetEmbeddedObjectSize();
-    NS_LOG_INFO(this << " Server " << " Embedded object to be served is " << objectSize << " bytes.");
-    m_embeddedObjectTrace(objectSize);
-    m_txBuffer->WriteNewObject(socket, ThreeGppHttpHeader::EMBEDDED_OBJECT, objectSize);
-    const uint32_t actualSent = ServeFromTxBuffer(socket);
+//     const uint32_t objectSize = m_httpVariables->GetEmbeddedObjectSize();
+//     NS_LOG_INFO(this << " Server " << " Embedded object to be served is " << objectSize << " bytes.");
+//     m_embeddedObjectTrace(objectSize);
+//     m_txBuffer->WriteNewObject(socket, ThreeGppHttpHeader::EMBEDDED_OBJECT, objectSize);
+//     const uint32_t actualSent = ServeFromTxBuffer(socket);
 
-    if (actualSent < objectSize)
-    {
-        NS_LOG_INFO(this << " Server " << " Transmission of embedded object is suspended"
-                         << " after " << actualSent << " bytes.");
-    }
-    else
-    {
-        NS_LOG_INFO(this << " Server " << " Finished sending a whole embedded object.");
-    }
-}
+//     if (actualSent < objectSize)
+//     {
+//         NS_LOG_INFO(this << " Server " << " Transmission of embedded object is suspended"
+//                          << " after " << actualSent << " bytes.");
+//     }
+//     else
+//     {
+//         NS_LOG_INFO(this << " Server " << " Finished sending a whole embedded object.");
+//     }
+// }
 
 uint32_t
 VideoStreamServerNew::ServeFromTxBuffer(Ptr<Socket> socket)
@@ -854,6 +816,7 @@ VideoStreamServerNew::ServeFromTxBuffer(Ptr<Socket> socket)
     // If this is the first packet of an object, attach a header.
     if (firstPartOfObject)
     {
+        NS_LOG_ERROR(this << "in pushing flow senario, we shouldn't see the ServeFromTxBuffer func with no sid called first");
         // Create header.
         VideoStreamHeader vHeader;
         vHeader.SetVideoNumber(m_videoRequested);
@@ -911,7 +874,7 @@ VideoStreamServerNew::ServeFromTxBuffer(Ptr<Socket> socket)
 
 } // end of `uint32_t ServeFromTxBuffer (Ptr<Socket> socket)`
 uint32_t
-VideoStreamServerNew::ServeFromTxBuffer(Ptr<Socket> socket, Ptr<Packet> packet)
+VideoStreamServerNew::ServeFromTxBuffer(Ptr<Socket> socket, StreamID sid)
 {
     NS_LOG_FUNCTION(this << socket);
 
@@ -930,8 +893,8 @@ VideoStreamServerNew::ServeFromTxBuffer(Ptr<Socket> socket, Ptr<Packet> packet)
 
     // Compute the size of actual content to be sent; has to fit into the socket.
     // Note that header size is NOT counted as TxBuffer content. Header size is overhead.
-    uint32_t contentSize = packet->GetSize();
-    // Ptr<Packet> packet = Create<Packet>(contentSize);
+    uint32_t contentSize = std::min(txBufferSize, socketSize - 22 - VideoStreamHeader::GetHeaderSize());
+    Ptr<Packet> packet = Create<Packet>(contentSize);
     uint32_t packetSize = contentSize;
     if (packetSize == 0)
     {
@@ -944,14 +907,15 @@ VideoStreamServerNew::ServeFromTxBuffer(Ptr<Socket> socket, Ptr<Packet> packet)
     {
         // Create header.
         VideoStreamHeader vHeader;
-        vHeader.SetVideoNumber(m_videoRequested);
-        vHeader.SetBitrateType(m_bitrateType);
-        vHeader.SetVideoChunkNumber(m_VideoChunkRequested);
+        vHeader.SetVideoNumber(sid);
+        vHeader.SetBitrateType(m_bitrateSet[0]);
+        vHeader.SetVideoChunkNumber(1234);
         const uint32_t videochunksize = 123456;
         const uint32_t videototalNumber = 666666;
         vHeader.setVideoChunkSize(videochunksize);
         vHeader.SetVideoChunkTotalNumber(videototalNumber);
-        vHeader.SetContentType(VideoStreamHeader::VIDEO_PEER);
+        vHeader.SetContentType(VideoStreamHeader::VIDEO_CHUNK);
+
         packet->AddHeader(vHeader);
         packetSize += vHeader.GetSerializedSize();
         ThreeGppHttpHeader httpHeader;
@@ -972,7 +936,7 @@ VideoStreamServerNew::ServeFromTxBuffer(Ptr<Socket> socket, Ptr<Packet> packet)
         // NS_LOG_INFO(this << " Server " << " Created packet " << packet << " of " << packetSize
         //                  << " bytes to be appended to a previous packet.");
     }
-
+    // packet->AddByteTag()
     // Send.
     const int actualBytes = socket->Send(packet);
     NS_LOG_DEBUG(this << " Send() packet " << packet << " of " << packetSize << " bytes,"

@@ -1,13 +1,13 @@
 /**
  * Author: Yinghao Yang <blacktonyrl@gmail.com>
- * 
-*/
-#ifndef VIDEO_STREAM_SERVER_NEW_H
-#define VIDEO_STREAM_SERVER_NEW_H
+ *
+ */
+#ifndef VIDEO_STREAM_PCDN_NEW_H
+#define VIDEO_STREAM_PCDN_NEW_H
+#include "VideoStreamHeader.h"
 #include "three-gpp-http-header.h"
 #include "three-gpp-http-variables.h"
 
-#include "VideoStreamHeader.h"
 #include <ns3/address.h>
 #include <ns3/application.h>
 #include <ns3/event-id.h>
@@ -17,7 +17,10 @@
 #include <ns3/traced-callback.h>
 
 #include <map>
+#include <vector>
 #include <ostream>
+#include <queue>
+#include <set>
 
 namespace ns3
 {
@@ -25,7 +28,7 @@ namespace ns3
 class Socket;
 class Packet;
 class ThreeGppHttpVariables;
-class VideoStreamServerTxBuffer;
+class VideoStreamPCDNNewTxBuffer;
 
 /**
  * \ingroup http
@@ -44,13 +47,13 @@ class VideoStreamServerTxBuffer;
  * due to limited socket buffer space.
  *
  * To assist with the transmission, the application maintains several instances
- * of VideoStreamServerTxBuffer. Each instance keeps track of the object type to be
+ * of VideoStreamPCDNNewTxBuffer. Each instance keeps track of the object type to be
  * served and the number of bytes left to be sent.
  *
  * The application accepts connection request from clients. Every connection is
  * kept open until the client disconnects.
  */
-class VideoStreamServerNew : public Application
+class VideoStreamPCDNNew : public Application
 {
   public:
     /**
@@ -58,13 +61,13 @@ class VideoStreamServerNew : public Application
      *
      * After creation, the application must be further configured through
      * attributes. To avoid having to do this process manually, please use
-     * VideoStreamServerHelper.
+     * VideoSteamPCDNHelper.
      *
      * Upon creation, the application randomly determines the MTU size that it
      * will use (either 536 or 1460 bytes). The chosen size will be used while
      * creating the listener socket.
      */
-    VideoStreamServerNew();
+    VideoStreamPCDNNew();
 
     /**
      * Returns the object TypeId.
@@ -87,35 +90,57 @@ class VideoStreamServerNew : public Application
      * Returns a pointer to the listening socket.
      * \return Pointer to the listening socket
      */
-    Ptr<Socket> GetSocket() const;
+    Ptr<Socket> GetServerSocket() const;
+
+    Ptr<Socket> GetClientSocket() const;
 
     /// The possible states of the application.
-    enum State_t
+    enum StateServer_t
     {
         NOT_STARTED = 0, ///< Before StartApplication() is invoked.
         STARTED,         ///< Passively listening and responding to requests.
         STOPPED          ///< After StopApplication() is invoked.
     };
 
+    enum StateClient_t
+    {
+        /// Before StartApplication() is invoked.
+        CLIENT_NOT_STARTED = 0,
+        /// Sent the server a connection request and waiting for the server to be accept it.
+        CLIENT_CONNECTING,
+        /// Sent the server a request for a main object and waiting to receive the packets.
+        CLIENT_EXPECTING_MAIN_OBJECT,
+        /// Parsing a main object that has just been received.
+        CLIENT_PARSING_MAIN_OBJECT,
+        /// Sent the server a request for an embedded object and waiting to receive the packets.
+        CLIENT_EXPECTING_EMBEDDED_OBJECT,
+        /// User reading a web page that has just been received.
+        CLIENT_READING,
+        /// After StopApplication() is invoked.
+        CLIENT_STOPPED
+    };
+
     /**
      * Returns the current state of the application.
      * \return The current state of the application.
      */
-    State_t GetState() const;
+    StateServer_t GetServerState() const;
+    StateClient_t GetClientState() const;
 
     /**
      * Returns the current state of the application in string format.
      * \return The current state of the application in string format.
      */
-    std::string GetStateString() const;
+    std::string GetStateServerString() const;
+    std::string GetStateClientString() const;
 
     /**
      * Returns the given state in string format.
      * \param state An arbitrary state of an application.
      * \return The given state equivalently expressed in string format.
      */
-    static std::string GetStateString(State_t state);
-    // void SetUsingPCDN(bool isUsePCDN);
+    static std::string GetStateServerString(StateServer_t state);
+    static std::string GetStateClientString(StateClient_t state);
 
     /**
      * Common callback signature for `MainObject` and `EmbeddedObject` trace
@@ -124,15 +149,13 @@ class VideoStreamServerNew : public Application
      */
     typedef void (*ThreeGppHttpObjectCallback)(uint32_t size);
 
-    typedef uint32_t StreamID;
-
     /**
      * Callback signature for `ConnectionEstablished` trace source.
-     * \param httpServer Pointer to this instance of VideoStreamServerNew, which is where
+     * \param httpServer Pointer to this instance of VideoStreamPCDNNew, which is where
      *                   the trace originated.
      * \param socket Pointer to the socket where the connection is established.
      */
-    typedef void (*ConnectionEstablishedCallback)(Ptr<const VideoStreamServerNew> httpServer,
+    typedef void (*ConnectionEstablishedCallback)(Ptr<const VideoStreamPCDNNew> httpServer,
                                                   Ptr<Socket> socket);
 
   protected:
@@ -196,43 +219,28 @@ class VideoStreamServerNew : public Application
 
     // TX-RELATED METHODS
 
-    void OnServerRecv(Ptr<Socket>socket, const Address& from, const VideoStreamHeader &vHeader);
-
     /**
-     * @brief 在有新的订阅时调用
-     * 
-     * @param socket not used
-     * @param from address
-     * @param sid stream id
+     * Generates a new main object and push it into the Tx buffer.
+     *
+     * The size of the object is randomly determined by ThreeGppHttpVariables.
+     * Fires the `MainObject` trace source. It then immediately triggers
+     * ServeFromTxBuffer() to send the object.
+     *
+     * \param socket Pointer to the socket which is associated with the
+     *               destination client.
      */
-    void OnSubCreate(Ptr<Socket> socket, Address from, StreamID sid);
+    void ServeNewMainObject(Ptr<Socket> socket, uint32_t videonumber);
     /**
-     * @brief 在有cancel订阅时调用
-     * 
-     * @param socket 
-     * @param from 
-     * @param sid stream id
+     * Generates a new embedded object and push it into the Tx buffer.
+     *
+     * The size of the object is randomly determined by ThreeGppHttpVariables.
+     * Fires the `EmbeddedObject` trace source. It then immediately triggers
+     * ServeFromTxBuffer() to send the object.
+     *
+     * \param socket Pointer to the socket which is associated with the
+     *               destination client.
      */
-    void OnSubDestory(Ptr<Socket> socket, Address from, StreamID sid);
-    
-    //TODO : how to specify a stream
-    void OnBufferReady(StreamID sid);
-
-    //TODO : how to serve a stream: transmit some code 
-    void ServeStream(Ptr<Socket> socket, Address from, StreamID sid);
-
-
-    // /**
-    //  * Generates a new embedded object and push it into the Tx buffer.
-    //  *
-    //  * The size of the object is randomly determined by ThreeGppHttpVariables.
-    //  * Fires the `EmbeddedObject` trace source. It then immediately triggers
-    //  * ServeFromTxBuffer() to send the object.
-    //  *
-    //  * \param socket Pointer to the socket which is associated with the
-    //  *               destination client.
-    //  */
-    // void ServeNewEmbeddedObject(Ptr<Socket> socket);
+    void ServeNewEmbeddedObject(Ptr<Socket> socket);
     /**
      * Creates a packet out of a pending object in the Tx buffer send it over the
      * given socket. If the socket capacity is smaller than the object size, then
@@ -252,48 +260,256 @@ class VideoStreamServerNew : public Application
      *               destination client.
      * \return Size of the packet sent (in bytes).
      */
+    uint32_t ServeFromTxBuffer(Ptr<Socket> socket, uint32_t videonumber);
     uint32_t ServeFromTxBuffer(Ptr<Socket> socket);
-    uint32_t ServeFromTxBuffer(Ptr<Socket> socket, StreamID sid);
 
     /**
      * Change the state of the server. Fires the `StateTransition` trace source.
      * \param state The new state.
      */
-    void SwitchToState(State_t state);
+    void SwitchToStateServer(StateServer_t state);
+    void SwitchToStateClient(StateClient_t state);
+
+    // CLIENT SOCKET CALLBACK METHODS
+
+    /**
+     * Invoked when a connection is established successfully on #m_socket. This
+     * triggers a request for a main object.
+     * \param socket Pointer to the socket where the event originates from.
+     */
+    void ClientConnectionSucceededCallback(Ptr<Socket> socket);
+    /**
+     * Invoked when #m_socket cannot establish a connection with the web server.
+     * Simulation will stop and error will be raised.
+     * \param socket Pointer to the socket where the event originates from.
+     */
+    void ClientConnectionFailedCallback(Ptr<Socket> socket);
+    /**
+     * Invoked when connection between #m_socket and the web sever is terminated.
+     * Error will be logged, but simulation continues.
+     * \param socket Pointer to the socket where the event originates from.
+     */
+    void ClientNormalCloseCallback(Ptr<Socket> socket);
+    /**
+     * Invoked when connection between #m_socket and the web sever is terminated.
+     * Error will be logged, but simulation continues.
+     * \param socket Pointer to the socket where the event originates from.
+     */
+    void ClientErrorCloseCallback(Ptr<Socket> socket);
+    /**
+     * Invoked when #m_socket receives some packet data. Fires the `Rx` trace
+     * source and triggers ReceiveMainObject() or ReceiveEmbeddedObject().
+     * \param socket Pointer to the socket where the event originates from.
+     */
+    void ClientReceivedDataCallback(Ptr<Socket> socket);
+
+    // CONNECTION-RELATED METHOD
+
+    /**
+     * Initialize #m_socket to connect to the destination web server at
+     * #m_remoteServerAddress and #m_remoteServerPort and set up callbacks to
+     * listen to its event. Invoked upon the start of the application.
+     */
+    void ClientOpenConnection();
+
+    // TX-RELATED METHODS
+
+    /**
+     * Send a request object for a main object to the destination web server.
+     * The size of the request packet is randomly determined by HttpVariables and
+     * is assumed to be smaller than 536 bytes. Fires the `TxMainObjectRequest`
+     * trace source.
+     *
+     * The method is invoked after a connection is established or after a
+     * reading time has elapsed.
+     */
+    void ClientRequestMainObject(Ptr<Socket> socket, uint32_t videoNumber);
+    /**
+     * Send a request object for an embedded object to the destination web
+     * server. The size of the request packet is randomly determined by
+     * ThreeGppHttpVariables and is assumed to be smaller than 536 bytes. Fires the
+     * `TxEmbeddedObjectRequest` trace source.
+     */
+    // void ClientRequestEmbeddedObject();
+
+    // RX-RELATED METHODS
+
+    /**
+     * Receive a packet of main object from the destination web server. Fires the
+     * `RxMainObjectPacket` trace source.
+     *
+     * A main object may come from more than one packets. This is determined by
+     * comparing the content length specified in the ThreeGppHttpHeader of the packet and
+     * the actual packet size. #m_objectBytesToBeReceived keeps track of the
+     * number of bytes that has been received.
+     *
+     * If the received packet is not the last packet of the object, then the
+     * method simply quits, expecting it to be invoked again when the next packet
+     * comes.
+     *
+     * If the received packet is the last packet of the object, then the method
+     * fires the `RxMainObject`, `RxDelay`, and `RxRtt` trace sources. The client
+     * then triggers EnterParsingTime().
+     *
+     * \param packet The received packet.
+     * \param from Address of the sender.
+     */
+    void ClientReceiveMainObject(Ptr<Packet> packet, const Address& from, Ptr<Socket> socket);
+    /**
+     * Receive a packet of embedded object from the destination web server. Fires
+     * the `RxEmbeddedObjectPacket` trace source.
+     *
+     * An embedded object may come from more than one packets. This is determined
+     * by comparing the content length specified in the TheeGppHttpHeader of the packet and
+     * the actual packet size. #m_objectBytesToBeReceived keeps track of the
+     * number of bytes that has been received.
+     *
+     * If the received packet is not the last packet of the object, then the
+     * method simply quits, expecting it to be invoked again when the next packet
+     * comes.
+     *
+     * If the received packet is the last packet of the object, then the method
+     * fires the `RxEmbeddedObject`, `RxDelay`, and `RxRtt` trace sources.
+     * Depending on the number of embedded objects remaining
+     * (#m_embeddedObjectsToBeRequested) the client can either trigger
+     * RequestEmbeddedObject() or EnterReadingTime().
+     *
+     * \param packet The received packet.
+     * \param from Address of the sender.
+     */
+    // void ClientReceiveEmbeddedObject(Ptr<Packet> packet, const Address& from);
+    /**
+     * Simulate a consumption of the received packet by subtracting the packet
+     * size from the internal counter at #m_objectBytesToBeReceived. Also updates
+     * #m_objectClientTs and #m_objectServerTs according to the ThreeGppHttpHeader
+     * found in the packet.
+     *
+     * This method is invoked as a sub-procedure of ReceiveMainObject() and
+     * ReceiveEmbeddedObject().
+     *
+     * \param packet The received packet. If it is the first packet of the object,
+     *               then it must have a ThreeGppHttpHeader attached to it.
+     */
+    void ClientReceive(Ptr<Socket> socket, Ptr<Packet> packet);
+
+    // OFF-TIME-RELATED METHODS
+
+    /**
+     * Becomes idle for a randomly determined amount of time, and then triggers
+     * ParseMainObject(). The length of idle time is determined by
+     * TheeGppHttpVariables.
+     *
+     * The method is invoked after a complete main object has been received.
+     */
+    void ClientEnterParsingTime(Ptr<Socket> socket);
+    /**
+     * Randomly determines the number of embedded objects in the main object.
+     * ThreeGppHttpVariables is utilized for this purpose. Then proceeds with
+     * RequestEmbeddedObject(). If the number of embedded objects has been
+     * determined as zero, then EnterReadingTime() is triggered.
+     *
+     * The method is invoked after parsing time has elapsed.
+     */
+    void ClientParseMainObject(Ptr<Socket> socket);
+    /**
+     * Becomes idle for a randomly determined amount of time, and then triggers
+     * RequestMainObject(). The length of idle time is determined by
+     * ThreeGppHttpVariables.
+     *
+     * The method is invoked after a complete web page has been received.
+     */
+    // void ClientEnterReadingTime();
+    /**
+     * Cancels #m_eventRequestMainObject, #m_eventRequestEmbeddedObject, and
+     * #m_eventParseMainObject. Invoked by StopApplication() and when connection
+     * has been terminated.
+     */
+    void ClientCancelAllPendingEvents(Ptr<Socket> socket);
+    Ptr<Socket> P2POpenConnection(Address P2PNode);
 
     /// The current state of the client application. Begins with NOT_STARTED.
-    State_t m_state;
+    StateServer_t m_state;
+
+    StateClient_t m_clientState;
     /// The listening socket, for receiving connection requests from clients.
     Ptr<Socket> m_initialSocket;
-    /// Pointer to the transmission buffer.
-    Ptr<VideoStreamServerTxBuffer> m_txBuffer;
 
+    Ptr<Socket> m_clientSocket;
+    Ptr<Socket> m_P2PSocket;
+    /// Pointer to the transmission buffer.
+    Ptr<VideoStreamPCDNNewTxBuffer> m_txBuffer;
+
+    struct PCDN_P2P_INFOS
+    {
+        uint32_t m_objectBytesToBeReceived;
+        /// The packet constructed of one or more parts with ThreeGppHttpHeader.
+        Ptr<Packet> m_constructedPacket;
+        /// The client time stamp of the ThreeGppHttpHeader from the last received packet.
+        Time m_objectClientTs;
+        /// The server time stamp of the ThreeGppHttpHeader from the last received packet.
+        Time m_objectServerTs;
+        /// Determined after parsing the main object.
+        uint32_t m_embeddedObjectsToBeRequested;
+        /// The time stamp when the page started loading.
+        Time m_pageLoadStartTs;
+        /// Number of embedded objects to requested in the current page.
+        uint32_t m_numberEmbeddedObjectsRequested;
+        /// Number of bytes received for the current page.
+        uint32_t m_numberBytesPage;
+        EventId m_eventRequestMainObject;
+        EventId m_eventParseMainObject;
+        EventId m_eventPopCachedChunk;
+
+        PCDN_P2P_INFOS()
+        {
+            m_objectBytesToBeReceived = 0;
+            m_constructedPacket = nullptr;
+            m_objectClientTs = Seconds(0);
+            m_objectServerTs = Seconds(0);
+            m_embeddedObjectsToBeRequested = 0;
+            m_pageLoadStartTs = Seconds(0);
+            m_numberEmbeddedObjectsRequested = 0;
+            m_numberBytesPage = 0;
+        }
+    };
+
+    std::map<Ptr<Socket>, PCDN_P2P_INFOS> m_P2PSocketInfo;
+
+    const int m_maxVideoCacheNumber = 5;
+
+    const int m_maxChunkCacheNumber = 5;
+    std::set<uint32_t> m_cachedVideoNumber;
+    //<videoNumber, [<chunkNumber, chunkSize>, <>, ....]>
+    std::map<uint32_t, std::queue<std::pair<uint32_t, uint32_t>>> m_cacheVideoBufferSize;
+
+    std::map<uint32_t, std::set<Ptr<Socket>>> m_forwardTable;
+    std::map<uint32_t, Ptr<Socket>> m_peerSocket;
+    std::set<Ptr<Socket>> m_peerSocketSet;
     // ATTRIBUTES
 
     /// The `Variables` attribute.
     Ptr<ThreeGppHttpVariables> m_httpVariables;
     /// The `LocalAddress` attribute.
     Address m_localAddress;
+    Address m_P2PAddress;
+    Address m_remoteServerAddress;
 
+    uint16_t m_remoteServerPort;
     /// The `LocalPort` attribute.
     uint16_t m_localPort;
+    uint16_t m_P2PPort;
     /// The `Mtu` attribute.
     uint32_t m_mtuSize;
-
 
     uint32_t m_bitrateType;
     uint32_t m_videoRequested;
     uint32_t m_VideoChunkRequested;
-    uint32_t m_bitrateSet[5];// = {350, 600, 1000, 2000, 3000};
-    uint32_t m_videoChunkTotalNumber[2];// = {5, 10};
-    // uint32_t m_usingP2P;
+    uint32_t m_bitrateSet[5];            // = {350, 600, 1000, 2000, 3000};
+    uint32_t m_videoChunkTotalNumber[2]; // = {5, 10};
     // TRACE SOURCES
 
-    // 流ID->需要传输的地址集合
-    std::map<StreamID, std::set<std::pair<Ptr<Socket>, Address>>> m_peerInfo;
-    std::map<StreamID, EventId> m_serveStreamEvent;
     /// The `ConnectionEstablished` trace source.
-    TracedCallback<Ptr<const VideoStreamServerNew>, Ptr<Socket>> m_connectionEstablishedTrace;
+    TracedCallback<Ptr<const VideoStreamPCDNNew>, Ptr<Socket>> m_connectionEstablishedTrace;
     /// The `MainObject` trace source.
     TracedCallback<uint32_t> m_mainObjectTrace;
     /// The `EmbeddedObject` trace source.
@@ -307,7 +523,7 @@ class VideoStreamServerNew : public Application
     /// The `StateTransition` trace source.
     TracedCallback<const std::string&, const std::string&> m_stateTransitionTrace;
 
-}; // end of `class VideoStreamServerNew`
+}; // end of `class VideoStreamPCDNNew`
 
 /**
  * \internal
@@ -324,11 +540,11 @@ class VideoStreamServerNew : public Application
  * content of a buffer has to be removed before a different type of data can
  * be added.
  */
-class VideoStreamServerTxBuffer : public SimpleRefCount<VideoStreamServerTxBuffer>
+class VideoStreamPCDNNewTxBuffer : public SimpleRefCount<VideoStreamPCDNNewTxBuffer>
 {
   public:
     /// Create an empty instance of transmission buffer.
-    VideoStreamServerTxBuffer();
+    VideoStreamPCDNNewTxBuffer();
 
     // SOCKET MANAGEMENT
 
@@ -564,7 +780,7 @@ class VideoStreamServerTxBuffer : public SimpleRefCount<VideoStreamServerTxBuffe
     /// Collection of accepted sockets and its individual transmission buffer.
     std::map<Ptr<Socket>, TxBuffer_t> m_txBuffer;
 
-}; // end of `class VideoStreamServerTxBuffer`
+}; // end of `class VideoStreamPCDNNewTxBuffer`
 
 } // namespace ns3
 #endif
