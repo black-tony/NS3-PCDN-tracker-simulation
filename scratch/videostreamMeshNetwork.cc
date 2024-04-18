@@ -111,14 +111,14 @@ int
 main(int argc, char* argv[])
 {
     double simTimeSec = 10;
-    int ARG_GROUP_NODE_NUM = 3;
-    int ARG_PCDN_NDOE_NUM = 3;
-    int ARG_CDN_NODE_NUM = 1;
+    const int ARG_GROUP_NODE_NUM = 3;
+    const int ARG_PCDN_NDOE_NUM = 3;
+    const int ARG_CDN_NODE_NUM = 1;
     CommandLine cmd(__FILE__);
     cmd.AddValue("SimulationTime", "Length of simulation in seconds.", simTimeSec);
-    cmd.AddValue("GroupNodeNumber", "group node number", ARG_GROUP_NODE_NUM);
-    cmd.AddValue("PCDNNodeNumber", "pcdn node number", ARG_PCDN_NDOE_NUM);
-    cmd.AddValue("CDNNodeNumber", "cdn node number", ARG_CDN_NODE_NUM);
+    // cmd.AddValue("GroupNodeNumber", "group node number", ARG_GROUP_NODE_NUM);
+    // cmd.AddValue("PCDNNodeNumber", "pcdn node number", ARG_PCDN_NDOE_NUM);
+    // cmd.AddValue("CDNNodeNumber", "cdn node number", ARG_CDN_NODE_NUM);
     cmd.Parse(argc, argv);
 
     Time::SetResolution(Time::NS);
