@@ -66,6 +66,7 @@ public:
     VIDEO_PEER,  ///< Integer equivalent = 2.
     VIDEO_CREATE_SUB, ///< Integer equivalent = 3;
     VIDEO_DESTORY_SUB, ///< Integer equivalent = 4;
+    VIDEO_NAK, ///< Integer equivalent = 4;
     VIDEO_MAX_TYPE
   };
 
