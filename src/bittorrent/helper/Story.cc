@@ -60,22 +60,22 @@ namespace bittorrent {
 #ifdef NS3_MPI
 #define SCHEDULE_CHAPTER_NOARGS(function, type) \
   { \
-    UniformRandomVariable uv; \
+    Ptr<UniformRandomVariable> uv = CreateObject<UniformRandomVariable>(); \
     for (NodeContainer::Iterator it = affectedNodes.Begin (); it != affectedNodes.End (); ++it) \
       { \
         if (PeekPointer (*it)->GetSystemId () == MpiInterface::GetSystemId ()) \
           { \
-            Simulator::Schedule (MilliSeconds (time.GetMilliSeconds () + uv.GetInteger (0, time2.GetMilliSeconds () - time.GetMilliSeconds ())), function, dynamic_cast<type*> (PeekPointer ((*it)->GetApplication (0)))); \
+            Simulator::Schedule (MilliSeconds (time.GetMilliSeconds () + uv->GetInteger (0, time2.GetMilliSeconds () - time.GetMilliSeconds ())), function, dynamic_cast<type*> (PeekPointer ((*it)->GetApplication (0)))); \
           } \
       } \
   }
 #else
 #define SCHEDULE_CHAPTER_NOARGS(function, type) \
   { \
-    UniformRandomVariable uv; \
+    Ptr<UniformRandomVariable> uv = CreateObject<UniformRandomVariable>(); \
     for (NodeContainer::Iterator it = affectedNodes.Begin (); it != affectedNodes.End (); ++it) \
       { \
-        Simulator::Schedule (MilliSeconds (time.GetMilliSeconds () + uv.GetInteger (0, time2.GetMilliSeconds () - time.GetMilliSeconds ())), function, dynamic_cast<type*> (PeekPointer ((*it)->GetApplication (0)))); \
+        Simulator::Schedule (MilliSeconds (time.GetMilliSeconds () + uv->GetInteger (0, time2.GetMilliSeconds () - time.GetMilliSeconds ())), function, dynamic_cast<type*> (PeekPointer ((*it)->GetApplication (0)))); \
       } \
   }
 #endif
@@ -83,22 +83,22 @@ namespace bittorrent {
 #ifdef NS3_MPI
 #define SCHEDULE_CHAPTER(function, type, ...) \
   { \
-    UniformRandomVariable uv; \
+    Ptr<UniformRandomVariable> uv = CreateObject<UniformRandomVariable>(); \
     for (NodeContainer::Iterator it = affectedNodes.Begin (); it != affectedNodes.End (); ++it) \
       { \
         if (PeekPointer (*it)->GetSystemId () == MpiInterface::GetSystemId ()) \
           { \
-            Simulator::Schedule (MilliSeconds (time.GetMilliSeconds () + uv.GetInteger (0, time2.GetMilliSeconds () - time.GetMilliSeconds ())), function, dynamic_cast<type*> (PeekPointer ((*it)->GetApplication (0))), __VA_ARGS__); \
+            Simulator::Schedule (MilliSeconds (time.GetMilliSeconds () + uv->GetInteger (0, time2.GetMilliSeconds () - time.GetMilliSeconds ())), function, dynamic_cast<type*> (PeekPointer ((*it)->GetApplication (0))), __VA_ARGS__); \
           } \
       } \
   }
 #else
 #define SCHEDULE_CHAPTER(function, type, ...) \
   { \
-    UniformRandomVariable uv; \
+    Ptr<UniformRandomVariable> uv = CreateObject<UniformRandomVariable>(); \
     for (NodeContainer::Iterator it = affectedNodes.Begin (); it != affectedNodes.End (); ++it) \
       { \
-        Simulator::Schedule (MilliSeconds (time.GetMilliSeconds () + uv.GetInteger (0, time2.GetMilliSeconds () - time.GetMilliSeconds ())), function, dynamic_cast<type*> (PeekPointer ((*it)->GetApplication (0))), __VA_ARGS__); \
+        Simulator::Schedule (MilliSeconds (time.GetMilliSeconds () + uv->GetInteger (0, time2.GetMilliSeconds () - time.GetMilliSeconds ())), function, dynamic_cast<type*> (PeekPointer ((*it)->GetApplication (0))), __VA_ARGS__); \
       } \
   }
 #endif
@@ -553,7 +553,7 @@ void Story::ReadAndScheduleStory (std::string filePath, uint32_t simulationDurat
 
           std::cout << "	For group "<< buffer << " (" << affectedNodes.GetN () << " nodes):" << std::endl;
         }
-
+      // std::cout << "now Target Is" << target << std::endl;
       if (client)
         {
           if (random)
@@ -933,14 +933,14 @@ void Story::ReadAndScheduleStory (std::string filePath, uint32_t simulationDurat
                                 }
                             }
 
-                          NormalRandomVariable gaussians;
+                          Ptr<NormalRandomVariable> gaussians = CreateObject<NormalRandomVariable>();
 
                           for (NodeContainer::Iterator it = affectedNodes.Begin (); it != affectedNodes.End (); ++it)
                             {
                               double randomValue = -1;
                               while (randomValue < 0 || randomValue > 1)
                                 {
-                                  randomValue = gaussians.GetValue (mean, stdDev * stdDev);
+                                  randomValue = gaussians->GetValue (mean, stdDev * stdDev);
                                 }
 
                               if (!randomTail)
@@ -1020,9 +1020,9 @@ void Story::ReadAndScheduleStory (std::string filePath, uint32_t simulationDurat
                         }
                       else
                         {
-                          UniformRandomVariable uv;
+                          Ptr<UniformRandomVariable> uv = CreateObject<UniformRandomVariable>();
                           
-                          buffer = lexical_cast<std::string> (uv.GetValue (0, 1) );
+                          buffer = lexical_cast<std::string> (uv->GetValue (0, 1) );
                           
                           if(!lineBuffer.eof ())
                             lineBuffer >> buffer;
@@ -1589,8 +1589,8 @@ void Story::ReadAndScheduleStory (std::string filePath, uint32_t simulationDurat
                 {
                   // Step 1: Get a random router
                   std::map<std::string, Ptr<Node> >::const_iterator routerIt = m_topologyHelper->GetLastRouters ();
-                  UniformRandomVariable uv;
-                  uint32_t its = uv.GetInteger (0, m_topologyHelper->GetLastRouterCount () - 1);
+                  Ptr<UniformRandomVariable> uv = CreateObject<UniformRandomVariable>();
+                  uint32_t its = uv->GetInteger (0, m_topologyHelper->GetLastRouterCount () - 1);
                   for (uint32_t i = 0; i < its; ++i)
                     {
                       ++routerIt;
@@ -1637,13 +1637,18 @@ void Story::ReadAndScheduleStory (std::string filePath, uint32_t simulationDurat
                   if (!m_trackerAdded)
                     {
                       std::map<std::string, Ptr<Node> >::const_iterator routerIt = m_topologyHelper->GetLastRouters ();
-                      UniformRandomVariable uv;
-                      uint32_t its = uv.GetInteger (0, m_topologyHelper->GetLastRouterCount () - 1);
+                      Ptr<UniformRandomVariable> uv = CreateObject<UniformRandomVariable>();
+                      // std::cout << "its" << std::endl;
+                      uv->SetAttribute ("Min", DoubleValue (0));
+                      uv->SetAttribute ("Max", DoubleValue (m_topologyHelper->GetLastRouterCount () - 1));
+                      uint32_t its = uv->GetInteger ();
+                      // std::cout << "its" << std::endl;
+
                       for (uint32_t i = 0; i < its; ++i)
                         {
                           ++routerIt;
                         }
-
+                      std::cout << its << std::endl;
                       Ptr<BitTorrentTracker> btTrackerApp = Create<BitTorrentTracker> ();
                       btTrackerApp->SetAnnouncePath ("/announce");
                       btTrackerApp->SetScrapePath ("/scrape");
@@ -1758,11 +1763,11 @@ void Story::ReadAndScheduleStory (std::string filePath, uint32_t simulationDurat
                     }
                   else
                     {
-                      UniformRandomVariable uv;
+                      Ptr<UniformRandomVariable> uv = CreateObject<UniformRandomVariable>();
                       for (uint32_t i = 0; i < newNodeCount; ++i)
                         {
                           std::map<std::string, Ptr<Node> >::const_iterator routerIt = m_topologyHelper->GetLastRouters ();
-                          uint32_t its = uv.GetInteger (0, m_topologyHelper->GetLastRouterCount () - 1);
+                          uint32_t its = uv->GetInteger (0, m_topologyHelper->GetLastRouterCount () - 1);
 
                           if(routerId == "")
                             {
@@ -1941,13 +1946,13 @@ void Story::ReadAndScheduleStory (std::string filePath, uint32_t simulationDurat
                         }
                       else
                         {
-                          UniformRandomVariable uv;
+                          Ptr<UniformRandomVariable> uv = CreateObject<UniformRandomVariable>();
                           Ipv4Address ipAddress (ip.c_str ());
                           
                           for (uint32_t i = 0; i < newNodeCount; ++i)
                             {
                               std::map<std::string, Ptr<Node> >::const_iterator routerIt = m_topologyHelper->GetLastRouters ();
-                              uint32_t its = uv.GetInteger (0, m_topologyHelper->GetLastRouterCount () - 1);
+                              uint32_t its = uv->GetInteger (0, m_topologyHelper->GetLastRouterCount () - 1);
                               
                               if(routerId == "")
                                 {
@@ -2065,8 +2070,8 @@ void Story::ReadAndScheduleStory (std::string filePath, uint32_t simulationDurat
 
                       if (buffer == "random")
                         {
-                          UniformRandomVariable uv;
-                          m_simulationId = lexical_cast<std::string> (uv.GetInteger (0, std::numeric_limits<uint32_t>::max () - 1));
+                          Ptr<UniformRandomVariable> uv = CreateObject<UniformRandomVariable>();
+                          m_simulationId = lexical_cast<std::string> (uv->GetInteger (0, std::numeric_limits<uint32_t>::max () - 1));
                         }
                       else if (buffer == "time")
                         {

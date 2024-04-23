@@ -55,8 +55,9 @@ void ShowTimePeriodic ()
 
 int main (int argc, char *argv[])
 {
-  // LogComponentEnable ("bittorrent::Peer", LOG_LEVEL_ALL);
-  // LogComponentEnable ("bittorrent::PartSelectionStrategyBase", LOG_LEVEL_ALL);
+    // LogComponentEnableAll (LOG_PREFIX_FUNC);
+  LogComponentEnable ("bittorrent::Peer", LOG_LEVEL_ALL);
+  LogComponentEnable ("bittorrent::PartSelectionStrategyBase", LOG_LEVEL_ALL);
   LogComponentEnable ("bittorrent::PeerConnectorStrategyBase", LOG_LEVEL_ALL);
   LogComponentEnable ("bittorrent::VODSimBriteTopologyHelper", LOG_LEVEL_ALL);
 

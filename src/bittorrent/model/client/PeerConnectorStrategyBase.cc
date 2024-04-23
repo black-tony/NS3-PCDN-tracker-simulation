@@ -246,8 +246,8 @@ uint16_t PeerConnectorStrategyBase::ConnectToPeers (uint16_t count)
   std::set<std::pair<uint32_t, uint16_t> >::const_iterator iter = potentialPeers.begin ();
   // This is a mini heuristic for random selection of peers to connect to.
   // One might want to implement a better one
-  UniformRandomVariable uv;
-  for (uint32_t start = uv.GetInteger (0, potentialPeers.size () - 1); start > 0; --start)
+  Ptr<UniformRandomVariable> uv = CreateObject<UniformRandomVariable>();
+  for (uint32_t start = uv->GetInteger (0, potentialPeers.size () - 1); start > 0; --start)
     {
       ++iter;
     }

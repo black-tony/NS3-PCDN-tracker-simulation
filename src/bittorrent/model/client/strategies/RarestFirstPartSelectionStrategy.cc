@@ -359,8 +359,8 @@ void RarestFirstPartSelectionStrategy::GetHighestPriorityBlockForPeer (Ptr<Peer>
           // Step 3b1a2: If we have found any blocks, randomly choose one of them
           if (possibleBlocks.size () != 0)
             {
-              UniformRandomVariable uv;
-              uint32_t index = uv.GetInteger (0, possibleBlocks.size () - 1);
+              Ptr<UniformRandomVariable> uv = CreateObject<UniformRandomVariable>();
+              uint32_t index = uv->GetInteger (0, possibleBlocks.size () - 1);
               blockPtr.m_pieceIndex = possibleBlocks[index].first;
               blockPtr.m_blockOffset = possibleBlocks[index].second.first;
               blockPtr.m_blockLength = possibleBlocks[index].second.second - possibleBlocks[index].second.first;

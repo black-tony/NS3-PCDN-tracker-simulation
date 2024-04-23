@@ -114,7 +114,7 @@ NodeContainer VODSimBriteTopologyHelper::AddClientNodesToLastTopology (uint32_t 
 
   std::list<std::pair<std::string, std::string> > bandwidths;
   std::list<std::pair<std::string, std::string> >::iterator bandwidthsIt;
-  UniformRandomVariable routerChooser, latencyChooser;
+  Ptr<UniformRandomVariable> routerChooser = CreateObject<UniformRandomVariable>(), latencyChooser = CreateObject<UniformRandomVariable>();
   std::string delay;
 
   if (m_bandwidthSamplesFile == "")
@@ -129,8 +129,8 @@ NodeContainer VODSimBriteTopologyHelper::AddClientNodesToLastTopology (uint32_t 
 
   for (uint32_t i = 0; i < numberOfClientNodes; ++i)
     {
-      Ptr<Node> parent = m_routers[lexical_cast < std::string > (routerChooser.GetInteger (0, m_routers.size () - 1))];
-      delay = lexical_cast<std::string> (latencyChooser.GetInteger (m_minDelay, m_maxDelay));
+      Ptr<Node> parent = m_routers[lexical_cast < std::string > (routerChooser->GetInteger (0, m_routers.size () - 1))];
+      delay = lexical_cast<std::string> (latencyChooser->GetInteger (m_minDelay, m_maxDelay));
       clientNodes.Add (AddNodeToLastTopology (
                          parent,
                          deviceType,
@@ -368,7 +368,7 @@ std::list<std::pair<std::string, std::string> > VODSimBriteTopologyHelper::GetBa
   std::vector<uint32_t> bucketSizes;
   uint32_t numberOfSamples = 0;
   std::map<uint32_t, std::vector<std::pair<std::string, std::string> > > buckets;
-  EmpiricalRandomVariable bucketChooser;
+  Ptr<EmpiricalRandomVariable> bucketChooser = CreateObject<EmpiricalRandomVariable>();
 
   ifstream file;
   istringstream lineBuffer;
@@ -406,7 +406,7 @@ std::list<std::pair<std::string, std::string> > VODSimBriteTopologyHelper::GetBa
    * buckets for the bandwidths of one specific node. The buckets are rated according to their size
    * compared to the cumulative size of all buckets. The last bucket gets a probability of 1.
    */
-  bucketChooser.CDF (0, 0.0);
+  bucketChooser->CDF (0, 0.0);
   double probability = 0.0;
   for (uint32_t i = 0; i < numberOfBuckets; ++i)
     {
@@ -423,21 +423,21 @@ std::list<std::pair<std::string, std::string> > VODSimBriteTopologyHelper::GetBa
       if (i < numberOfBuckets - 1)
         {
           probability += static_cast<double> (bucketSizes[i]) / numberOfSamples;
-          bucketChooser.CDF (i, probability);
+          bucketChooser->CDF (i, probability);
 
           NS_LOG_INFO ("BriteToplogyHelper: Bucket " << i << ", cumulative probability: " << probability << ".");
         }
     }
-  bucketChooser.CDF (numberOfBuckets - 1, 1.0);
+  bucketChooser->CDF (numberOfBuckets - 1, 1.0);
 
   NS_LOG_INFO ("VODSimBriteTopologyHelper: Bucket " << numberOfBuckets - 1 << ", own probability: " << static_cast<double> (bucketSizes[numberOfBuckets - 1]) / numberOfSamples << ".");
 
   // Now, we generate our bandwidth distribution list
-  UniformRandomVariable uv;
+  Ptr<UniformRandomVariable> uv = CreateObject<UniformRandomVariable>();
   for (uint32_t node = 0; node < numberOfNodes; ++node)
     {
-      uint32_t bucket = bucketChooser.GetInteger ();
-      uint32_t bucketIndex = uv.GetInteger (0, buckets[bucket].size () - 1);
+      uint32_t bucket = bucketChooser->GetInteger ();
+      uint32_t bucketIndex = uv->GetInteger (0, buckets[bucket].size () - 1);
       result.push_back (buckets[bucket][bucketIndex]);
     }
 
@@ -450,19 +450,19 @@ std::list<std::pair<std::string, std::string> > VODSimBriteTopologyHelper::GetSi
 {
   std::list<std::pair<std::string, std::string> > result;
 
-  EmpiricalRandomVariable randomDownstream;
-  randomDownstream.CDF (1023, 0.0);
-  randomDownstream.CDF (1024, 0.1);
-  randomDownstream.CDF (2047, 0.1);
-  randomDownstream.CDF (2048, 0.5);
-  randomDownstream.CDF (6015, 0.5);
-  randomDownstream.CDF (6016, 0.85);
-  randomDownstream.CDF (15999, 0.85);
-  randomDownstream.CDF (16000, 1);
+  Ptr<EmpiricalRandomVariable> randomDownstream = CreateObject<EmpiricalRandomVariable>();
+  randomDownstream->CDF (1023, 0.0);
+  randomDownstream->CDF (1024, 0.1);
+  randomDownstream->CDF (2047, 0.1);
+  randomDownstream->CDF (2048, 0.5);
+  randomDownstream->CDF (6015, 0.5);
+  randomDownstream->CDF (6016, 0.85);
+  randomDownstream->CDF (15999, 0.85);
+  randomDownstream->CDF (16000, 1);
 
   for (uint32_t node = 0; node < numberOfNodes; ++node)
     {
-      uint32_t downstreamBandwidth = randomDownstream.GetInteger ();
+      uint32_t downstreamBandwidth = randomDownstream->GetInteger ();
       uint32_t upstreamBandwidth;
 
       switch (downstreamBandwidth)

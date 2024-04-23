@@ -47,8 +47,8 @@ std::list<uint32_t> Utilities::GetPermutationP (uint32_t m, uint32_t n)
 
   for (uint32_t j = n - m + 1; j <= n; ++j)
     {
-      UniformRandomVariable uv;
-      uint32_t t = uv.GetInteger (1, j);
+      Ptr<UniformRandomVariable> uv = CreateObject<UniformRandomVariable>();
+      uint32_t t = uv->GetInteger (1, j);
 
       std::list<uint32_t>::iterator it = find (result.begin (), result.end (), t);
       if (it == result.end ())
@@ -80,8 +80,9 @@ std::set<uint32_t> Utilities::GetRandomSampleF2 (uint32_t m, uint32_t n)
 
   for (uint32_t j = n - m + 1; j <= n; ++j)
     {
-      UniformRandomVariable uv;
-      uint32_t t = uv.GetInteger (1, j);
+      Ptr<UniformRandomVariable> uv = CreateObject<UniformRandomVariable>();
+
+      uint32_t t = uv->GetInteger (1, j);
       if (result.find (t) == result.end ())
         {
           result.insert (t);

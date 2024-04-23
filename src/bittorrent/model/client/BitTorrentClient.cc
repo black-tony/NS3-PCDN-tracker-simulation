@@ -113,9 +113,9 @@ void BitTorrentClient::DoDispose ()
 void BitTorrentClient::StartApplication ()
 {
   // Step 0: Set up a unique client id (peerId)
-  UniformRandomVariable uv;
+  Ptr<UniformRandomVariable> uv = CreateObject<UniformRandomVariable>();
   std::string peerId = "VODSim-" + lexical_cast<std::string> (GetNode ()->GetId ());
-  peerId += "-" + lexical_cast<std::string> (uv.GetInteger (0, 0xffffffff - 1));
+  peerId += "-" + lexical_cast<std::string> (uv->GetInteger (0, 0xffffffff - 1));
   peerId.resize (20, '.');
   m_peerId = peerId;
 
@@ -142,22 +142,22 @@ void BitTorrentClient::StartApplication ()
       m_bitfield[i] = 0;
     }
 
-  ConstantRandomVariable bitfieldFiller;
+  Ptr<ConstantRandomVariable> bitfieldFiller;
   uint32_t randomEndStart = bitfieldSize;
   switch (m_bitfieldFillType[0])
     {
     case 'e':
-      // bitfieldFiller = Create<Ptr<ConstantRandomVariable>>();   
+      bitfieldFiller = CreateObject<ConstantRandomVariable>();   
       for (uint8_t i = 0; i < randomEndStart; ++i)
       {
-         m_bitfield[i] = static_cast<uint8_t> (bitfieldFiller.GetInteger (0.0));
+         m_bitfield[i] = static_cast<uint8_t> (bitfieldFiller->GetInteger (0));
       }      
       break;
     case 'f':
-      // bitfieldFiller = Create<Ptr<ConstantRandomVariable>>();   
+      bitfieldFiller = CreateObject<ConstantRandomVariable>();   
       for (uint8_t i = 0; i < randomEndStart; ++i)
       {
-         m_bitfield[i] = static_cast<uint8_t> (bitfieldFiller.GetInteger (255.0));
+         m_bitfield[i] = static_cast<uint8_t> (bitfieldFiller->GetInteger (255));
       }            
       break;
     case 'r':
@@ -173,21 +173,23 @@ void BitTorrentClient::StartApplication ()
       break;
     }
     default:
-      // bitfieldFiller =  Create<Ptr<ConstantRandomVariable>>();   
+      bitfieldFiller = CreateObject<ConstantRandomVariable>();   
       randomEndStart = bitfieldSize - static_cast<uint32_t> (ceil (bitfieldSize * lexical_cast<double> (m_bitfieldFillType.substr (1, m_bitfieldFillType.size () - 1))));
       
       for (uint8_t i = 0; i < randomEndStart; ++i)
       {
-         m_bitfield[i] = static_cast<uint8_t> (bitfieldFiller.GetInteger (255.0));
+         m_bitfield[i] = static_cast<uint8_t> (bitfieldFiller->GetInteger (255));
       }            
       break;
     }
-  UniformRandomVariable bitfieldFiller_b;
-  // bitfieldFiller = Create<Ptr< UniformRandomVariable>> ();
+  Ptr<UniformRandomVariable> bitfieldFiller_b;
+
+  // UniformRandomVariable bitfieldFiller_b;
+  bitfieldFiller_b = CreateObject<UniformRandomVariable> ();
 
   for (uint8_t i = randomEndStart; i < bitfieldSize; ++i)
     {
-      m_bitfield[i] = static_cast<uint8_t> (bitfieldFiller_b.GetInteger (0.0, 255.0));
+      m_bitfield[i] = static_cast<uint8_t> (bitfieldFiller_b->GetInteger (0, 255));
     }
   // <-- Step 3b
 

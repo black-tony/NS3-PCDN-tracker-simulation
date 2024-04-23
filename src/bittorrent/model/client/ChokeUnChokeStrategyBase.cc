@@ -357,8 +357,8 @@ void ChokeUnChokeStrategyBase::ProcessPeriodicSchedule ()
       bool newOptimisticallyUnchokedPeerFound = false;
 
       // New peers are 3 times more probable to be optimistically unchoked than older peers (see wiki.theory.org)
-      UniformRandomVariable uv;
-      uint8_t newPeerChooser = uv.GetInteger (0,2);
+      Ptr<UniformRandomVariable> uv = CreateObject<UniformRandomVariable>();
+      uint8_t newPeerChooser = uv->GetInteger (0,2);
 
       if (newPeerChooser < 2 && m_newlyConnectedPeers.size () > 0)         // but since they may also be included in the list of "interested" peers, we only need to check for a "2" instead of a "3" here
         {
@@ -368,7 +368,7 @@ void ChokeUnChokeStrategyBase::ProcessPeriodicSchedule ()
           while (maxTries > 0 && !newOptimisticallyUnchokedPeerFound)
             {
               std::list<Ptr<Peer> >::iterator it = m_newlyConnectedPeers.begin ();
-              for (uint16_t unchokeChoice = uv.GetInteger (0, m_newlyConnectedPeers.size () - 1); unchokeChoice > 0; --unchokeChoice)
+              for (uint16_t unchokeChoice = uv->GetInteger (0, m_newlyConnectedPeers.size () - 1); unchokeChoice > 0; --unchokeChoice)
                 {
                   ++it;
                 }
@@ -395,7 +395,7 @@ void ChokeUnChokeStrategyBase::ProcessPeriodicSchedule ()
       if (!newOptimisticallyUnchokedPeerFound && m_interestedPeers.size () > 0)
         {
           std::set<Ptr<Peer> >::iterator it = m_interestedPeers.begin ();
-          for (uint16_t unchokeChoice = uv.GetInteger (0, m_interestedPeers.size () - 1); unchokeChoice > 0; --unchokeChoice)
+          for (uint16_t unchokeChoice = uv->GetInteger (0, m_interestedPeers.size () - 1); unchokeChoice > 0; --unchokeChoice)
             {
               ++it;
             }
