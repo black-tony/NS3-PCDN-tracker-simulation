@@ -8,7 +8,7 @@ AlwaysBreakAfterReturnType: TopLevelDefinitions
 AlwaysBreakTemplateDeclarations: Yes
 BinPackArguments: false
 BinPackParameters: false
-ColumnLimit: 100
+ColumnLimit: 150
 DeriveLineEnding: false
 IncludeBlocks: Regroup
 IncludeCategories:
