@@ -214,8 +214,8 @@ NS_OBJECT_ENSURE_REGISTERED (BitTorrentBitfieldMessage);
 
 BitTorrentBitfieldMessage::BitTorrentBitfieldMessage ()
 {
-  m_bitField = 0;
-  m_bitFieldSize = 0;
+    m_bitField = nullptr;
+    m_bitFieldSize = 0;
 }
 
 BitTorrentBitfieldMessage::BitTorrentBitfieldMessage (uint32_t bitFieldSize)
@@ -227,7 +227,7 @@ BitTorrentBitfieldMessage::BitTorrentBitfieldMessage (uint32_t bitFieldSize)
 BitTorrentBitfieldMessage::~BitTorrentBitfieldMessage ()
 {
   delete [] m_bitField;
-  m_bitField = 0;
+  m_bitField = nullptr;
 }
 
 void BitTorrentBitfieldMessage::SetBitFieldSize (uint32_t bitFieldSize)
@@ -458,8 +458,8 @@ NS_OBJECT_ENSURE_REGISTERED (BitTorrentExtensionMessage);
 
 BitTorrentExtensionMessage::BitTorrentExtensionMessage ()
 {
-  m_content = 0;
-  m_packetLength = 1;
+    m_content = nullptr;
+    m_packetLength = 1;
 }
 
 BitTorrentExtensionMessage::BitTorrentExtensionMessage (uint32_t packetLength)

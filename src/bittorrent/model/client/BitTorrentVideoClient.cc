@@ -79,8 +79,8 @@ void BitTorrentVideoClient::StartApplication ()
 
   // TODO: Shift this into a new Torrent class derivate?
   std::string comment = GetTorrent ()->GetComment ();
-  if (comment.size () > 0)
-    {
+  if (!comment.empty())
+  {
       double lengthInMs = lexical_cast<double> (comment.substr (0, comment.find ("ms")));
 
       m_milliSecondsPerPiece = std::ceil (lengthInMs / GetTorrent ()->GetNumberOfPieces ());

@@ -68,9 +68,9 @@ public:
   static TypeId GetTypeId (void);
 
   VODSimBriteTopologyHelper ();
-  virtual ~VODSimBriteTopologyHelper ();
+  ~VODSimBriteTopologyHelper() override;
 
-// Main interaction methods
+  // Main interaction methods
 public:
   /**
    * \brief Attach additional "client" nodes to the topology.

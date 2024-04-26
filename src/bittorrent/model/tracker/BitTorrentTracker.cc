@@ -70,7 +70,8 @@ BitTorrentTracker::~BitTorrentTracker ()
 {
 }
 
-TypeId BitTorrentTracker::GetTypeId (void)
+TypeId
+BitTorrentTracker::GetTypeId()
 {
   static TypeId tid = TypeId ("ns3::BitTorrentTracker")
     .SetParent<Application> ()
@@ -79,19 +80,22 @@ TypeId BitTorrentTracker::GetTypeId (void)
   return tid;
 }
 
-void BitTorrentTracker::StartApplication (void)
+void
+BitTorrentTracker::StartApplication()
 {
   // Start the BitTorrentHttpServer component
   m_handleStartListening (GetNode (), TcpSocketFactory::GetTypeId (), m_handleConnectionCreation);
 }
 
-void BitTorrentTracker::StopApplication (void)
+void
+BitTorrentTracker::StopApplication()
 {
   // Stop the BitTorrentHttpServer component
   m_handleStopListening ();
 }
 
-void BitTorrentTracker::DoDispose (void)
+void
+BitTorrentTracker::DoDispose()
 {
   Application::DoDispose ();
 }

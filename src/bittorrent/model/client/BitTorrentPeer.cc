@@ -77,11 +77,11 @@ Peer::Peer (Ptr<BitTorrentClient> myClient)
   m_packetBuffer = Create<Packet> ();
   m_lengthHeader.SetPacketLength (BT_PROTOCOL_MESSAGES_LENGTHHEADER_LENGTH);
   m_lengthHeaderRemoved = false;
-  m_blockBuffer = 0;
+  m_blockBuffer = nullptr;
   m_blockBufferSize = 0;
 
   // Packet transmission members and corresponding state machine attributes
-  m_blockSendBuffer = 0;
+  m_blockSendBuffer = nullptr;
   m_blockSendDataLeft = 0;
   m_blockSendingActive = false;
 
@@ -615,7 +615,7 @@ bool Peer::HandlePiece (Ptr<Packet> packet, uint32_t packetLength)
   if (m_blockBufferSize < blockLength)
     {
       delete [] m_blockBuffer;
-      m_blockBuffer = 0;
+      m_blockBuffer = nullptr;
       m_blockBuffer = new uint8_t[blockLength];
       m_blockBufferSize = blockLength;
     }
@@ -1111,11 +1111,11 @@ void Peer::PseudoDeInitializeMe ()
   delete pDummy;
   delete pDummy2;
   delete[] m_blockBuffer;
-  m_blockBuffer = 0;
+  m_blockBuffer = nullptr;
   delete[] m_blockSendBuffer;
-  m_blockSendBuffer = 0;
+  m_blockSendBuffer = nullptr;
   delete[] m_pieceCorruptionMap;
-  m_pieceCorruptionMap = 0;
+  m_pieceCorruptionMap = nullptr;
 
   m_connectionState = CONN_STATE_DEINITIALIZED;
 }

@@ -63,7 +63,7 @@ public:
    * \return the container of the nodes created (or empty container if there was an error).
    * Note that you can retrieve specially annotated nodes by special member functions.
    */
-  virtual NodeContainer Read ();
+  NodeContainer Read() override;
 
   /**
    * \brief Get the nodes representing border routers / AS's in the last call to BriteTopologyReader::Read().

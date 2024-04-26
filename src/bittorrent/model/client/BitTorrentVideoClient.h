@@ -87,10 +87,11 @@ private:
 // Constructors etc.
 public:
   BitTorrentVideoClient ();
-  virtual ~BitTorrentVideoClient ();
+  ~BitTorrentVideoClient() override;
   static TypeId GetTypeId (void);
 protected:
-  virtual void StopApplication (void);
+  void StopApplication(void) override;
+
 public:
 
   /**
@@ -110,9 +111,9 @@ public:
    * Note: You must set the shared file the client shall download and the employed downloading strategies with the SetTorrent and SetProtocol
    * methods, respectively, before calling this method. Otherwise, initialization of the client will fail and the simulation may abort.
    */
-  virtual void StartApplication (void);
+  void StartApplication(void) override;
 
-// Getters, setters
+  // Getters, setters
 public:
   // Basic settings for the video client
 

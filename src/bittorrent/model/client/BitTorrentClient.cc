@@ -89,7 +89,8 @@ BitTorrentClient::~BitTorrentClient ()
 {
 }
 
-TypeId BitTorrentClient::GetTypeId (void)
+TypeId
+BitTorrentClient::GetTypeId()
 {
   static TypeId tid = TypeId ("ns3::BitTorrentClient")
     .SetParent<Application> ()

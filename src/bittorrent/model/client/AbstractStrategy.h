@@ -46,7 +46,7 @@ public:
   AbstractStrategy (Ptr<BitTorrentClient> myClient);
   virtual ~AbstractStrategy ();
 
-  virtual void DoInitialize () = 0;
+  void DoInitialize() override = 0;
 
 protected:
   Ptr<BitTorrentClient> m_myClient;    // The client that this strategy is associated with

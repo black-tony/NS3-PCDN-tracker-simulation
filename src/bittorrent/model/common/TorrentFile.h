@@ -137,79 +137,102 @@ protected:
 class TorrentDataString : public TorrentData
 {
 public:
-	TorrentDataString() {}
-	virtual ~TorrentDataString() {}
+	TorrentDataString() {
+    }
 
-	std::string GetData() const {
+    ~TorrentDataString() override
+    {
+    }
+
+    std::string GetData() const {
 		return m_data;
-	}
+    }
 
-	virtual TorrentDataType GetDataType() const {
-		return DATA_STRING;
-	}
+    TorrentDataType GetDataType() const override
+    {
+        return DATA_STRING;
+    }
 
-	virtual bool ReadFromStream(std::istream &file);
-private:
+    bool ReadFromStream(std::istream& file) override;
+
+  private:
 	std::string m_data;
 };
 
 class TorrentDataInt : public TorrentData
 {
 public:
-	TorrentDataInt() {}
-	virtual ~TorrentDataInt() {}
+	TorrentDataInt() {
+    }
 
-	long long GetData() const {
+    ~TorrentDataInt() override
+    {
+    }
+
+    long long GetData() const {
 		return m_data;
-	}
+    }
 
-	virtual TorrentDataType GetDataType() const {
-		return DATA_INT;
-	}
+    TorrentDataType GetDataType() const override
+    {
+        return DATA_INT;
+    }
 
-	virtual bool ReadFromStream(std::istream &file);
-private:
+    bool ReadFromStream(std::istream& file) override;
+
+  private:
 	long long m_data;
 };
 
 class TorrentDataList : public TorrentData
 {
 public:
-	TorrentDataList() {}
-	virtual ~TorrentDataList() {}
+	TorrentDataList() {
+    }
 
-	std::list<Ptr<TorrentData> >::const_iterator GetIterator() const {
+    ~TorrentDataList() override
+    {
+    }
+
+    std::list<Ptr<TorrentData> >::const_iterator GetIterator() const {
 		return m_data.begin();
 	}
 
 	std::list<Ptr<TorrentData> >::const_iterator GetListEnd() const {
 			return m_data.end();
-		}
+    }
 
-	virtual TorrentDataType GetDataType() const {
-		return DATA_LIST;
-	}
+    TorrentDataType GetDataType() const override
+    {
+        return DATA_LIST;
+    }
 
-	virtual bool ReadFromStream(std::istream &file);
-private:
+    bool ReadFromStream(std::istream& file) override;
+
+  private:
 	std::list<Ptr<TorrentData> > m_data;
 };
 
 class TorrentDataDictonary : public TorrentData
 {
 public:
-	TorrentDataDictonary() {}
-	virtual ~TorrentDataDictonary() {}
+	TorrentDataDictonary() {
+    }
 
-	Ptr<TorrentData> GetData(const std::string &entry);
+    ~TorrentDataDictonary() override
+    {
+    }
 
-	virtual TorrentDataType GetDataType() const {
-		return DATA_DICT;
-	}
+    Ptr<TorrentData> GetData(const std::string& entry);
 
-	virtual bool ReadFromStream(std::istream &file);
+    TorrentDataType GetDataType() const override
+    {
+        return DATA_DICT;
+    }
 
-	void Dump() const;
+    bool ReadFromStream(std::istream& file) override;
+
+    void Dump() const;
 private:
 	std::map<std::string,Ptr<TorrentData> > m_data;
 };

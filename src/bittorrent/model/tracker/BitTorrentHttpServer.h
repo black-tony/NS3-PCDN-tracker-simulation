@@ -66,7 +66,7 @@ public:
   /**
    * \brief Close the socket opened via StartListening, effectively causing the server to stop accepting incoming connections.
    */
-  void StopListening (void);
+  void StopListening();
 
   /**
    * \brief A callback stub handler for accepted connections. Sets the appropriate internal handlers for reception and connection closure.

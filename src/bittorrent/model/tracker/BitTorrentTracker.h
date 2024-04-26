@@ -117,12 +117,15 @@ protected:
 public:
   BitTorrentTracker ();
   virtual ~BitTorrentTracker ();
-  static TypeId GetTypeId (void);
+  static TypeId GetTypeId();
+
 public:
-  virtual void StartApplication (void);
-  virtual void StopApplication (void);
+  void StartApplication() override;
+  void StopApplication() override;
+
 protected:
-  virtual void DoDispose (void);
+  void DoDispose() override;
+
 private:
   BitTorrentTracker (const BitTorrentTracker&);
   BitTorrentTracker& operator = (const BitTorrentTracker);

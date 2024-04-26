@@ -48,10 +48,10 @@ private:
 // Constructors etc.
 public:
   BitTorrentHandshakeMessage ();
-  ~BitTorrentHandshakeMessage ();
-  static TypeId GetTypeId (void);
+  ~BitTorrentHandshakeMessage() override;
+  static TypeId GetTypeId();
 
-// Getters, Setters
+  // Getters, Setters
 
   /**
    * @returns the protocol identifier stored in the packet.
@@ -120,22 +120,23 @@ public:
 
 // (De-)Serialization
 public:
-  virtual void Serialize (Buffer::Iterator start) const;
-  virtual uint32_t GetSerializedSize (void) const
+  void Serialize(Buffer::Iterator start) const override;
+
+  uint32_t GetSerializedSize() const override
   {
     return 49 + m_protocol.size ();
   }
 
-  virtual void Print (std::ostream &os) const
+  void Print(std::ostream& os) const override
   {
     // Stub
   }
 
 private:
-  virtual uint32_t Deserialize (Buffer::Iterator start);
+  uint32_t Deserialize(Buffer::Iterator start) override;
 
 private:
-  virtual TypeId GetInstanceTypeId (void) const
+  TypeId GetInstanceTypeId() const override
   {
     return GetTypeId ();
   }
@@ -162,10 +163,10 @@ private:
 public:
   BitTorrentLengthHeader ();
   BitTorrentLengthHeader (uint32_t len);
-  ~BitTorrentLengthHeader ();
-  static TypeId GetTypeId (void);
+  ~BitTorrentLengthHeader() override;
+  static TypeId GetTypeId();
 
-// Getters, setters
+  // Getters, setters
   /**
    * \brief Get the length of the Peer Wire message to follow.
    *
@@ -188,22 +189,23 @@ public:
 
 // (De-)Serialization
 public:
-  virtual void Serialize (Buffer::Iterator start) const;
-  virtual uint32_t GetSerializedSize (void) const
+  void Serialize(Buffer::Iterator start) const override;
+
+  uint32_t GetSerializedSize() const override
   {
     return 4;
   }
 
-  virtual void Print (std::ostream &os) const
+  void Print(std::ostream& os) const override
   {
     // Stub
   }
 
 private:
-  virtual uint32_t Deserialize (Buffer::Iterator start);
+  uint32_t Deserialize(Buffer::Iterator start) override;
 
 private:
-  virtual TypeId GetInstanceTypeId (void) const
+  TypeId GetInstanceTypeId() const override
   {
     return GetTypeId ();
   }
@@ -254,10 +256,10 @@ public:
    * @param type the desired type.
    */
   BitTorrentTypeHeader (BitTorrentMessageType type);
-  ~BitTorrentTypeHeader ();
-  static TypeId GetTypeId (void);
+  ~BitTorrentTypeHeader() override;
+  static TypeId GetTypeId();
 
-// Getters, setters
+  // Getters, setters
 public:
   /**
    * @returns the type of Peer Wire protocol message immediately following this header.
@@ -279,22 +281,23 @@ public:
 
 // (De)-Serialization
 public:
-  virtual void Serialize (Buffer::Iterator start) const;
-  virtual uint32_t GetSerializedSize (void) const
+  void Serialize(Buffer::Iterator start) const override;
+
+  uint32_t GetSerializedSize() const override
   {
     return 1;
   }
 
-  virtual void Print (std::ostream &os) const
+  void Print(std::ostream& os) const override
   {
     // Stub
   }
 
 private:
-  virtual uint32_t Deserialize (Buffer::Iterator start);
+  uint32_t Deserialize(Buffer::Iterator start) override;
 
 private:
-  virtual TypeId GetInstanceTypeId (void) const
+  TypeId GetInstanceTypeId() const override
   {
     return GetTypeId ();
   }
@@ -327,10 +330,10 @@ public:
    * @param pieceIndex the index in the bitfield of the piece the client wants to announce.
    */
   BitTorrentHaveMessage (uint32_t pieceIndex);
-  ~BitTorrentHaveMessage ();
-  static TypeId GetTypeId (void);
+  ~BitTorrentHaveMessage() override;
+  static TypeId GetTypeId();
 
-// Getters, setters
+  // Getters, setters
 public:
 
   /**
@@ -353,22 +356,23 @@ public:
 
 // (De-)Serialization
 public:
-  virtual void Serialize (Buffer::Iterator start) const;
-  virtual uint32_t GetSerializedSize (void) const
+  void Serialize(Buffer::Iterator start) const override;
+
+  uint32_t GetSerializedSize() const override
   {
     return 4;
   }
 
-  virtual void Print (std::ostream &os) const
+  void Print(std::ostream& os) const override
   {
     // Stub
   }
 
 private:
-  virtual uint32_t Deserialize (Buffer::Iterator start);
+  uint32_t Deserialize(Buffer::Iterator start) override;
 
 private:
-  virtual TypeId GetInstanceTypeId (void) const
+  TypeId GetInstanceTypeId() const override
   {
     return GetTypeId ();
   }
@@ -400,10 +404,10 @@ public:
    * @param bitfieldSize the size, in bytes, of the bitfield to be contained within the message.
    */
   BitTorrentBitfieldMessage (uint32_t bitFieldSize);
-  ~BitTorrentBitfieldMessage ();
-  static TypeId GetTypeId (void);
+  ~BitTorrentBitfieldMessage() override;
+  static TypeId GetTypeId();
 
-// Getters, setters
+  // Getters, setters
 public:
   /**
    * @returns the size, in bytes, of the bitfield contained within the message.
@@ -441,22 +445,23 @@ public:
 
 // (De-)Serialization
 public:
-  virtual void Serialize (Buffer::Iterator start) const;
-  virtual uint32_t GetSerializedSize (void) const
+  void Serialize(Buffer::Iterator start) const override;
+
+  uint32_t GetSerializedSize() const override
   {
     return m_bitFieldSize;
   }
 
-  virtual void Print (std::ostream &os) const
+  void Print(std::ostream& os) const override
   {
     // Stub
   }
 
 private:
-  virtual uint32_t Deserialize (Buffer::Iterator start);
+  uint32_t Deserialize(Buffer::Iterator start) override;
 
 private:
-  virtual TypeId GetInstanceTypeId (void) const
+  TypeId GetInstanceTypeId() const override
   {
     return GetTypeId ();
   }
@@ -493,10 +498,10 @@ public:
    * @param blockLength the length, in bytes, of the block requested.
    */
   BitTorrentRequestMessage (uint32_t pieceIndex, uint32_t blockOffset, uint32_t blockLength);
-  ~BitTorrentRequestMessage ();
-  static TypeId GetTypeId (void);
+  ~BitTorrentRequestMessage() override;
+  static TypeId GetTypeId();
 
-// Getters, setters
+  // Getters, setters
 public:
   /**
    * @returns the index of the piece requested.
@@ -524,25 +529,26 @@ public:
 
 // (De-)Serialization
 public:
-  virtual void Serialize (Buffer::Iterator start) const;
-  virtual uint32_t GetSerializedSize (void) const
+  void Serialize(Buffer::Iterator start) const override;
+
+  uint32_t GetSerializedSize() const override
   {
     return 12;
   }
 
-  virtual void Print (std::ostream &os) const
+  void Print(std::ostream& os) const override
   {
     // Stub
   }
 
 private:
-  virtual TypeId GetInstanceTypeId (void) const
+  TypeId GetInstanceTypeId() const override
   {
     return GetTypeId ();
   }
 
 private:
-  virtual uint32_t Deserialize (Buffer::Iterator start);
+  uint32_t Deserialize(Buffer::Iterator start) override;
 };
 
 /************************************************************************************************/
@@ -578,10 +584,10 @@ public:
    * @param blockOffset the offset, in bytes, of the block that the message contains.
    */
   BitTorrentPieceMessage (uint32_t index, uint32_t begin);
-  ~BitTorrentPieceMessage ();
-  static TypeId GetTypeId (void);
+  ~BitTorrentPieceMessage() override;
+  static TypeId GetTypeId();
 
-// Getters, setters
+  // Getters, setters
 public:
   /**
    * @returns the index of the piece the message contains.
@@ -601,22 +607,23 @@ public:
 
 // (De-)Serialization OF THE PIECE MESSAGE HEAD (payload must be read out directly from the stream!)
 public:
-  virtual void Serialize (Buffer::Iterator start) const;
-  virtual uint32_t GetSerializedSize (void) const
+  void Serialize(Buffer::Iterator start) const override;
+
+  uint32_t GetSerializedSize() const override
   {
     return 8;
   }
 
-  virtual void Print (std::ostream &os) const
+  void Print(std::ostream& os) const override
   {
     // Stub
   }
 
 private:
-  virtual uint32_t Deserialize (Buffer::Iterator start);
+  uint32_t Deserialize(Buffer::Iterator start) override;
 
 private:
-  virtual TypeId GetInstanceTypeId (void) const
+  TypeId GetInstanceTypeId() const override
   {
     return GetTypeId ();
   }
@@ -655,10 +662,10 @@ public:
    * @param blockLength the length, in bytes, of the block cancelled.
    */
   BitTorrentCancelMessage (uint32_t pieceIndex, uint32_t blockOffset, uint32_t blockLength);
-  ~BitTorrentCancelMessage ();
-  static TypeId GetTypeId (void);
+  ~BitTorrentCancelMessage() override;
+  static TypeId GetTypeId();
 
-// Getters, setters
+  // Getters, setters
 public:
   /**
    * @returns the index of the piece cancelled.
@@ -686,22 +693,23 @@ public:
 
 // (De-)Serialization
 public:
-  virtual void Serialize (Buffer::Iterator start) const;
-  virtual uint32_t GetSerializedSize (void) const
+  void Serialize(Buffer::Iterator start) const override;
+
+  uint32_t GetSerializedSize() const override
   {
     return 12;
   }
 
-  virtual void Print (std::ostream &os) const
+  void Print(std::ostream& os) const override
   {
     // Stub
   }
 
 private:
-  virtual uint32_t Deserialize (Buffer::Iterator start);
+  uint32_t Deserialize(Buffer::Iterator start) override;
 
 private:
-  virtual TypeId GetInstanceTypeId (void) const
+  TypeId GetInstanceTypeId() const override
   {
     return GetTypeId ();
   }
@@ -737,10 +745,10 @@ public:
    * @param listenPort the port of the DHT tracker to announce.
    */
   BitTorrentPortMessage (uint16_t listenPort);
-  ~BitTorrentPortMessage ();
-  static TypeId GetTypeId (void);
+  ~BitTorrentPortMessage() override;
+  static TypeId GetTypeId();
 
-// Getters, setters
+  // Getters, setters
 public:
   /**
    * @returns the announced listening port of the DHT tracker.
@@ -752,22 +760,23 @@ public:
 
 // (De-)Serialization
 public:
-  virtual void Serialize (Buffer::Iterator start) const;
-  virtual uint32_t GetSerializedSize (void) const
+  void Serialize(Buffer::Iterator start) const override;
+
+  uint32_t GetSerializedSize() const override
   {
     return 2;
   }
 
-  virtual void Print (std::ostream &os) const
+  void Print(std::ostream& os) const override
   {
     // Stub
   }
 
 private:
-  virtual uint32_t Deserialize (Buffer::Iterator start);
+  uint32_t Deserialize(Buffer::Iterator start) override;
 
 private:
-  virtual TypeId GetInstanceTypeId (void) const
+  TypeId GetInstanceTypeId() const override
   {
     return GetTypeId ();
   }
@@ -816,10 +825,10 @@ public:
    * @param content the content of the message.
    */
   BitTorrentExtensionMessage (uint8_t messageId, const std::string& content);
-  ~BitTorrentExtensionMessage ();
-  static TypeId GetTypeId (void);
+  ~BitTorrentExtensionMessage() override;
+  static TypeId GetTypeId();
 
-// Getters, setters
+  // Getters, setters
 public:
   /**
    * @returns the length, in bytes, of the message. Includes 1 byte for the ID of the contained message.
@@ -851,22 +860,23 @@ public:
 
 // (De-)Serialization
 public:
-  virtual void Serialize (Buffer::Iterator start) const;
-  virtual uint32_t GetSerializedSize (void) const
+  void Serialize(Buffer::Iterator start) const override;
+
+  uint32_t GetSerializedSize() const override
   {
     return m_packetLength;
   }
 
-  virtual void Print (std::ostream &os) const
+  void Print(std::ostream& os) const override
   {
     // Stub
   }
 
 private:
-  virtual uint32_t Deserialize (Buffer::Iterator start);
+  uint32_t Deserialize(Buffer::Iterator start) override;
 
 private:
-  virtual TypeId GetInstanceTypeId (void) const
+  TypeId GetInstanceTypeId() const override
   {
     return GetTypeId ();
   }

@@ -220,8 +220,8 @@ public:
   static TypeId GetTypeId ();
 
 protected:
-  virtual void StopApplication (void);
-  virtual void DoDispose (void);
+  void StopApplication() override;
+  void DoDispose() override;
 
 public:
   /**
@@ -236,9 +236,9 @@ public:
    * Note: You must set the shared file the client shall download and the employed downloading strategies with the SetTorrent and SetProtocol
    * methods, respectively, before calling this method. Otherwise, initialization of the client will fail and the simulation may abort.
    */
-  virtual void StartApplication (void);
+  void StartApplication() override;
 
-// Getters, setters
+  // Getters, setters
 public:
   // The main attributes of the BitTorrentClient
 
