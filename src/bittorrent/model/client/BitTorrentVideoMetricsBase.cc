@@ -20,98 +20,107 @@
 
 #include "BitTorrentVideoMetricsBase.h"
 
-#include "BitTorrentVideoClient.h"
 #include "BitTorrentPeer.h"
+#include "BitTorrentVideoClient.h"
 
 #include "ns3/pointer.h"
 #include "ns3/simulator.h"
 
 #include <map>
 
-namespace ns3 {
-namespace bittorrent {
-
-BitTorrentVideoMetricsBase::BitTorrentVideoMetricsBase (Ptr<BitTorrentClient> myClient) : AbstractStrategy (myClient)
+namespace ns3
 {
-  m_myVideoClient = DynamicCast<BitTorrentVideoClient> (myClient);
+namespace bittorrent
+{
+
+BitTorrentVideoMetricsBase::BitTorrentVideoMetricsBase(Ptr<BitTorrentClient> myClient)
+    : AbstractStrategy(myClient)
+{
+    m_myVideoClient = DynamicCast<BitTorrentVideoClient>(myClient);
 }
 
-BitTorrentVideoMetricsBase::~BitTorrentVideoMetricsBase ()
+BitTorrentVideoMetricsBase::~BitTorrentVideoMetricsBase()
 {
-
 }
 
-void BitTorrentVideoMetricsBase::DoInitialize ()
+void
+BitTorrentVideoMetricsBase::DoInitialize()
 {
-  // Register for the different events the client issues
-  m_myVideoClient->RegisterCallbackGatherMetricsEvent (MakeCallback (&BitTorrentVideoMetricsBase::ReturnPeriodicMetrics, this));
+    // Register for the different events the client issues
+    m_myVideoClient->RegisterCallbackGatherMetricsEvent(MakeCallback(&BitTorrentVideoMetricsBase::ReturnPeriodicMetrics, this));
 
-  m_myVideoClient->RegisterCallbackPlaybackPositionWillChangePeriodicallyEvent (MakeCallback (&BitTorrentVideoMetricsBase::ProcessPlaybackPositionWillChangePeriodicallyEvent, this));
-  m_myVideoClient->RegisterCallbackPlaybackPositionChangedEvent (MakeCallback (&BitTorrentVideoMetricsBase::ProcessPlaybackPositionChangedEvent, this));
-  m_myVideoClient->RegisterCallbackPlaybackStateChangedEvent (MakeCallback (&BitTorrentVideoMetricsBase::ProcessPlaybackStateChangedEvent, this));
+    m_myVideoClient->RegisterCallbackPlaybackPositionWillChangePeriodicallyEvent(
+        MakeCallback(&BitTorrentVideoMetricsBase::ProcessPlaybackPositionWillChangePeriodicallyEvent, this));
+    m_myVideoClient->RegisterCallbackPlaybackPositionChangedEvent(
+        MakeCallback(&BitTorrentVideoMetricsBase::ProcessPlaybackPositionChangedEvent, this));
+    m_myVideoClient->RegisterCallbackPlaybackStateChangedEvent(MakeCallback(&BitTorrentVideoMetricsBase::ProcessPlaybackStateChangedEvent, this));
 
-  // Initialize the fluency metric
-  m_bufferStart = m_bufferEnd = Simulator::Now ();
-  m_playbackStart = m_playbackEnd = MilliSeconds (0);
-  m_fluencyNumerator = m_fluencyDenominator = MilliSeconds (0);
+    // Initialize the fluency metric
+    m_bufferStart = m_bufferEnd = Simulator::Now();
+    m_playbackStart = m_playbackEnd = MilliSeconds(0);
+    m_fluencyNumerator = m_fluencyDenominator = MilliSeconds(0);
 }
 
-void BitTorrentVideoMetricsBase::ProcessPlaybackPositionWillChangePeriodicallyEvent ()
+void
+BitTorrentVideoMetricsBase::ProcessPlaybackPositionWillChangePeriodicallyEvent()
 {
-  m_periodicPositionChangeAnnounced = true;
+    m_periodicPositionChangeAnnounced = true;
 }
 
-void BitTorrentVideoMetricsBase::ProcessPlaybackPositionChangedEvent (Time newPosition)
+void
+BitTorrentVideoMetricsBase::ProcessPlaybackPositionChangedEvent(Time newPosition)
 {
-  // Process the fluency metric
-  if (!m_periodicPositionChangeAnnounced)
+    // Process the fluency metric
+    if (!m_periodicPositionChangeAnnounced)
     {
-      m_playbackStart = m_myVideoClient->GetPlaybackPosition ();
+        m_playbackStart = m_myVideoClient->GetPlaybackPosition();
     }
 
-  // Reset the announcement of a periodic position change, if so announced (since this method handled that change)
-  m_periodicPositionChangeAnnounced = false;
+    // Reset the announcement of a periodic position change, if so announced (since this method handled that change)
+    m_periodicPositionChangeAnnounced = false;
 }
 
-void BitTorrentVideoMetricsBase::ProcessPlaybackStateChangedEvent ()
+void
+BitTorrentVideoMetricsBase::ProcessPlaybackStateChangedEvent()
 {
-  if (m_myVideoClient->IsPlaying ())
+    if (m_myVideoClient->IsPlaying())
     {
-      // Process the fluency metric
-      if (!m_myVideoClient->IsPaused ())
+        // Process the fluency metric
+        if (!m_myVideoClient->IsPaused())
         {
-          m_bufferEnd = Simulator::Now ();
-          m_playbackStart = m_myVideoClient->GetPlaybackPosition ();
+            m_bufferEnd = Simulator::Now();
+            m_playbackStart = m_myVideoClient->GetPlaybackPosition();
         }
-      else
+        else
         {
-          m_bufferStart = Simulator::Now ();
-          m_playbackEnd = m_myVideoClient->GetPlaybackPosition ();
+            m_bufferStart = Simulator::Now();
+            m_playbackEnd = m_myVideoClient->GetPlaybackPosition();
 
-          m_fluencyNumerator += ((m_playbackEnd - m_playbackStart) - (m_bufferEnd - m_bufferStart));
-          m_fluencyDenominator += (m_playbackEnd - m_playbackStart);
+            m_fluencyNumerator += ((m_playbackEnd - m_playbackStart) - (m_bufferEnd - m_bufferStart));
+            m_fluencyDenominator += (m_playbackEnd - m_playbackStart);
         }
     }
 }
 
-std::map<std::string, std::string> BitTorrentVideoMetricsBase::ReturnPeriodicMetrics ()
+std::map<std::string, std::string>
+BitTorrentVideoMetricsBase::ReturnPeriodicMetrics()
 {
-  // Step 1: Prepare the result
-  std::map<std::string, std::string> result;
+    // Step 1: Prepare the result
+    std::map<std::string, std::string> result;
 
-  // Step 2: Add the fluency metric
-  if (!m_fluencyDenominator.IsZero ())
+    // Step 2: Add the fluency metric
+    if (!m_fluencyDenominator.IsZero())
     {
-      result["fluency"] = lexical_cast<std::string> (m_fluencyNumerator.GetMilliSeconds () / m_fluencyDenominator.GetMilliSeconds ());
+        result["fluency"] = lexical_cast<std::string>(m_fluencyNumerator.GetMilliSeconds() / m_fluencyDenominator.GetMilliSeconds());
     }
-  else
+    else
     {
-      result["fluency"] = "div/0";
+        result["fluency"] = "div/0";
     }
 
-  // Last step: Return the result
-  return result;
+    // Last step: Return the result
+    return result;
 }
 
-} // ns bittorrent
-} // ns ns3
+} // namespace bittorrent
+} // namespace ns3
