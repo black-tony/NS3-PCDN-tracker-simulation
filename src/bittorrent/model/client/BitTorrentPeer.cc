@@ -752,8 +752,7 @@ Peer::HandleRead(Ptr<Socket> socket)
         }
         else if (m_connectionState == CONN_STATE_CONNECTED)
         {
-            if (!m_lengthHeaderRemoved) // We have not yet inspected the beginning of the next
-                                        // message
+            if (!m_lengthHeaderRemoved) // We have not yet inspected the beginning of the next message
             {
                 NS_ASSERT(m_packetBuffer->GetSize() >= m_lengthHeader.GetPacketLength());
 

@@ -47,13 +47,13 @@ class RequestSchedulingStrategyBase : public AbstractStrategy
 // Constructors etc.
 public:
   RequestSchedulingStrategyBase (Ptr<BitTorrentClient> myClient);
-  virtual ~RequestSchedulingStrategyBase ();
+  ~RequestSchedulingStrategyBase() override;
   /**
    * Initialize the strategy. Register the needed event listeners with the associated client.
    */
-  virtual void DoInitialize ();
+  void DoInitialize() override;
 
-// Event handlers
+  // Event handlers
 public:
   /**
    * \brief Event handler for received REQUEST messages. Implements the main functionality.

@@ -54,19 +54,19 @@ protected:
 // Constructors etc.
 public:
 	RarestFirstPartSelectionStrategy(Ptr<BitTorrentClient> myClient);
-	virtual ~RarestFirstPartSelectionStrategy();
+    ~RarestFirstPartSelectionStrategy() override;
 
-  /**
-   * \brief Initialze the strategy. Register the needed event listeners with the associated client.
-   *
-   * Especially, this method registers event listeners for member functions provided by the base
-   * PartSelectionStrategyBase class.
-   */
-	virtual void DoInitialize();
-	virtual void ProcessStrategyOptionsChangedEvent();
+    /**
+     * \brief Initialze the strategy. Register the needed event listeners with the associated client.
+     *
+     * Especially, this method registers event listeners for member functions provided by the base
+     * PartSelectionStrategyBase class.
+     */
+    void DoInitialize() override;
+    void ProcessStrategyOptionsChangedEvent() override;
 
-// Event listeners
-public:
+    // Event listeners
+  public:
 
 	/**
 	 * \brief Reacts to an announced bitfield by shifting the availability of all pieces announced by the peer up by one.
@@ -76,19 +76,19 @@ public:
 	/**
 	 * \brief Reacts to the closure of a connection by shifting the availability of all pieces announced by the peer down by one.
 	 */
-	virtual void ProcessPeerConnectionCloseEvent(Ptr<Peer> peer);
+    void ProcessPeerConnectionCloseEvent(Ptr<Peer> peer) override;
 
-	/**
+    /**
 	 * \brief Reacts to a HAVE message by a peer by shifting the availability of the announced piece up by one.
 	 */
-	virtual void ProcessPeerHaveEvent(Ptr<Peer> peer, uint32_t pieceIndex);
+    void ProcessPeerHaveEvent(Ptr<Peer> peer, uint32_t pieceIndex) override;
 
-// Semi-listener methods
-protected:
-	virtual void ProcessCompletedPiece(uint32_t pieceIndex);
+    // Semi-listener methods
+  protected:
+    void ProcessCompletedPiece(uint32_t pieceIndex) override;
 
-// Strategy implementation methods
-protected:
+    // Strategy implementation methods
+  protected:
 
 	/**
 	 * \brief Implements a rarest-first part selection strategy.
@@ -96,7 +96,7 @@ protected:
 	 * This strategy first tries to complete any piece which is already being requested from the given peer
 	 * and only then randomly selects among the rarest pieces available at the specific peer.
 	 */
-	virtual void GetHighestPriorityBlockForPeer(Ptr<Peer> peer, BlockRequested& blockPtr);
+    void GetHighestPriorityBlockForPeer(Ptr<Peer> peer, BlockRequested& blockPtr) override;
 };
 
 } // ns bittorrent

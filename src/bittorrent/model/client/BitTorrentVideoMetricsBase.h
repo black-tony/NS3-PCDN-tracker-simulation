@@ -58,10 +58,10 @@ private:
 // Constructors etc.
 public:
   BitTorrentVideoMetricsBase (Ptr<BitTorrentClient> myClient);
-  virtual ~BitTorrentVideoMetricsBase ();
-  virtual void DoInitialize ();
+  ~BitTorrentVideoMetricsBase() override;
+  void DoInitialize() override;
 
-// Event listeners etc.
+  // Event listeners etc.
 public:
   void ProcessPlaybackPositionWillChangePeriodicallyEvent ();
   virtual void ProcessPlaybackPositionChangedEvent (Time newPosition);

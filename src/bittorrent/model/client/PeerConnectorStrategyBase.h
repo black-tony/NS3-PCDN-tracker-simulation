@@ -100,15 +100,15 @@ protected:
 // Constructors etc.
 public:
   PeerConnectorStrategyBase (Ptr<BitTorrentClient> myClient);
-  virtual ~PeerConnectorStrategyBase ();
+  ~PeerConnectorStrategyBase() override;
   /**
    * \brief Initialze the strategy.
    *
    * Register the needed event listeners with the associated client.
    */
-  virtual void DoInitialize ();
+  void DoInitialize() override;
 
-// Getters, setters
+  // Getters, setters
 public:
   /**
    * \brief Get the list of clients that the client has so far discovered.

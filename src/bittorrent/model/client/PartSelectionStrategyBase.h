@@ -209,12 +209,12 @@ protected:
 // Constructors etc.
 public:
   PartSelectionStrategyBase (Ptr<BitTorrentClient> myClient);
-  virtual ~PartSelectionStrategyBase ();
+  ~PartSelectionStrategyBase() override;
 
   /**
    * \brief Initialze the strategy. Register the needed event listeners with the associated client.
    */
-  virtual void DoInitialize ();
+  void DoInitialize() override;
 
   /**
    * \brief React to in-operation changes of strategy parameters.

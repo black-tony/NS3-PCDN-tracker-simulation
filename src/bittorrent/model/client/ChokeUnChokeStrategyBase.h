@@ -85,11 +85,11 @@ protected:
 // Constructors etc.
 public:
   ChokeUnChokeStrategyBase (Ptr<BitTorrentClient> myClient);
-  virtual ~ChokeUnChokeStrategyBase ();
+  ~ChokeUnChokeStrategyBase() override;
 
-  virtual void DoInitialize ();
+  void DoInitialize() override;
 
-// Getters, setters
+  // Getters, setters
 public:
   /**
    * \brief Get the choking/unchoking interval.
