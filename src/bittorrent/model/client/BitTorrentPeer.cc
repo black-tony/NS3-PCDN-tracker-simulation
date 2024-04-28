@@ -20,6 +20,7 @@
 
 #include "BitTorrentPeer.h"
 
+#include "3rd-party/sha1.h"
 #include "BitTorrentClient.h"
 #include "BitTorrentPacket.h"
 #include "StorageManager.h"
@@ -455,6 +456,12 @@ Peer::GetRemotePeerId() const
     return m_remotePeerId;
 }
 
+std::set<std::string>
+Peer::GetRemoteSubscribeInfoHash() const
+{
+    return m_remoteHashInfo;
+}
+
 bool
 Peer::IsChoking() const
 {
@@ -736,7 +743,9 @@ Peer::HandleRead(Ptr<Socket> socket)
             {
                 BitTorrentHandshakeMessage handshake;
                 m_packetBuffer->RemoveHeader(handshake);
-
+                // char SHAhexstring[41];
+                // sha1::toHexString(handshake.GetInfoHash(), SHAhexstring);
+                // m_remoteHashInfo.push_back(std::string(SHAhexstring));
                 // Store data from packet
                 m_remotePeerId.append(reinterpret_cast<const char*>(handshake.GetPeerId()), BT_PROTOCOL_MESSAGES_HANDSHAKE_PEERID_LENGTH_MAX);
 
@@ -877,6 +886,19 @@ Peer::HandleRead(Ptr<Socket> socket)
                     m_packetBuffer->RemoveHeader(extMsg);
 
                     m_myClient->PeerExtensionMessageEvent(this, extMsg.GetMessageId(), extMsg.GetContent());
+                    break;
+                }
+                case BitTorrentTypeHeader::SUBSCRIBE:{
+                    BitTorrentSubscriptionMessage subMsg;
+                    m_packetBuffer->RemoveHeader(subMsg);
+                    HandleSubscrbe(socket, std::string(subMsg.GetStreamHash()));
+                    break;
+                }
+                case BitTorrentTypeHeader::UNSUBSCRIBE:{
+                    BitTorrentSubscriptionMessage subMsg;
+                    m_packetBuffer->RemoveHeader(subMsg);
+                    HandleUnSubscrbe(socket, std::string(subMsg.GetStreamHash()));
+
                     break;
                 }
                 default: {
@@ -1047,6 +1069,21 @@ Peer::HandleDataSent(Ptr<Socket> socket, uint32_t dataSent)
     }
 
     //  HandleSend (m_peerSocket, m_peerSocket->GetTxAvailable ());
+}
+
+void
+Peer::HandleSubscrbe(Ptr<Socket> socket, const std::string &streamHash)
+{
+    m_remoteHashInfo.insert(streamHash);
+    m_myClient->SubscribeStream(this, streamHash);
+}
+
+void
+Peer::HandleUnSubscrbe(Ptr<Socket> socket, const std::string& streamHash)
+{
+    m_remoteHashInfo.erase(streamHash);
+    m_myClient->UnSubscribeStream(this, streamHash);
+
 }
 
 void

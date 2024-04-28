@@ -324,20 +324,20 @@ PeerConnectorStrategyBase::DisconnectPeers(int32_t count)
     {
         NS_LOG_INFO("PeerConnectorStrategyBase: " << m_myClient->GetIp() << ":  Disconnecting all peers.");
 
-        std::vector<Ptr<Peer>>::const_iterator it = m_myClient->GetPeerListIterator();
+        std::map<std::string, Ptr<Peer>>::const_iterator it = m_myClient->GetPeerListIterator();
         for (; it != m_myClient->GetPeerListEnd(); ++it)
         {
-            Simulator::Schedule(MilliSeconds(1), &PeerConnectorStrategyBase::DisconnectPeer, this, *it);
+            Simulator::Schedule(MilliSeconds(1), &PeerConnectorStrategyBase::DisconnectPeer, this, it->second);
         }
     }
     else
     {
-        std::vector<Ptr<Peer>>::const_iterator it = m_myClient->GetPeerListIterator();
+        std::map<std::string, Ptr<Peer>>::const_iterator it = m_myClient->GetPeerListIterator();
         uint32_t disconnect = std::min(static_cast<uint32_t>(m_myClient->GetConnectedPeerCount()), static_cast<uint32_t>(count));
 
         for (; disconnect > 0; --disconnect, ++it)
         {
-            Simulator::Schedule(MilliSeconds(1), &PeerConnectorStrategyBase::DisconnectPeer, this, *it);
+            Simulator::Schedule(MilliSeconds(1), &PeerConnectorStrategyBase::DisconnectPeer, this, it->second);
         }
     }
 }
@@ -677,7 +677,7 @@ PeerConnectorStrategyBase::CheckAndDisconnectIfRejected(Ptr<Peer> peer)
     }
     else // Else, fully register the peer with the client
     {
-        m_myClient->RegisterPeer(peer);
+        m_myClient->RegisterPeer(peer->GetRemoteInfoHash(), peer);
         m_myClient->PeerConnectionEstablishedEvent(peer);
 
         NS_LOG_INFO("PeerConnectorStrategyBase: " << m_myClient->GetIp() << ": Fully established connection with " << peer->GetRemoteIp() << ":"

@@ -240,6 +240,8 @@ public:
     CANCEL = 8,
     PORT = 9,
     EXTENDED = 20,  // BitTorrent Extension Protocol according to BEP-10,
+    SUBSCRIBE = 21,
+    UNSUBSCRIBE = 22,
 	HANDSHAKE = 128
   };
 
@@ -782,6 +784,69 @@ private:
   }
 };
 
+/************************************************************************************************/
+/****************************************** BitTorrentsubMessage *****************************************/
+/************************************************************************************************/
+
+/**
+ * \ingroup BitTorrent
+ *
+ * \brief A BitTorrent sub message.
+ *
+ * This class implements the Peer subscription message as a derivative of the Header class.
+ */
+class BitTorrentSubscriptionMessage : public Header
+{
+// Fields
+private:
+  char* m_StreamHash[41];     // The stream hash transmit as string end with \0
+
+// Constructors etc.
+public:
+  BitTorrentSubscriptionMessage ();
+
+  /**
+   * \brief Construct a sub message.
+   *
+   * @param streamHash 
+   */
+  BitTorrentSubscriptionMessage (const char* streamHash);
+  ~BitTorrentSubscriptionMessage() override;
+  static TypeId GetTypeId();
+
+  // Getters, setters
+public:
+  /**
+   * @returns the announced listening port of the DHT tracker.
+   */
+  const char* GetStreamHash () const
+  {
+    return (const char*)m_StreamHash;
+  }
+
+// (De-)Serialization
+public:
+  void Serialize(Buffer::Iterator start) const override;
+
+  uint32_t GetSerializedSize() const override
+  {
+    return 41;
+  }
+
+  void Print(std::ostream& os) const override
+  {
+    os << m_StreamHash;
+  }
+
+private:
+  uint32_t Deserialize(Buffer::Iterator start) override;
+
+private:
+  TypeId GetInstanceTypeId() const override
+  {
+    return GetTypeId ();
+  }
+};
 /************************************************************************************************/
 /**************************************** BitTorrentExtensionMessage **************************************/
 /************************************************************************************************/

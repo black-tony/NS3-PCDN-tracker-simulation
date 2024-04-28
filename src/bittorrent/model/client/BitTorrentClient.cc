@@ -638,13 +638,13 @@ BitTorrentClient::SetStrategyOptions(std::map<std::string, std::string> strategy
     m_lastChangedStrategyOptionName = "";
 }
 
-std::vector<Ptr<Peer>>::const_iterator
+std::map<Ptr<Peer>, std::set<std::string>>::const_iterator
 BitTorrentClient::GetPeerListIterator() const
 {
     return m_peerList.begin();
 }
 
-std::vector<Ptr<Peer>>::const_iterator
+std::map<Ptr<Peer>, std::set<std::string>>::const_iterator
 BitTorrentClient::GetPeerListEnd() const
 {
     return m_peerList.end();
@@ -653,24 +653,89 @@ BitTorrentClient::GetPeerListEnd() const
 void
 BitTorrentClient::RegisterPeer(Ptr<Peer> peer)
 {
-    m_peerList.push_back(peer);
+    if (m_peerList.find(peer) != m_peerList.end())
+    {
+        return;
+    }
+    m_peerList.insert(std::make_pair(peer, std::set<std::string>()));
+    // m_peerList[''];
 }
 
 void
 BitTorrentClient::UnregisterPeer(Ptr<Peer> peer)
 {
-    for (std::vector<Ptr<Peer>>::iterator it = m_peerList.begin(); it != m_peerList.end();)
+    for (std::map<Ptr<Peer>, std::set<std::string>>::iterator it = m_peerList.begin(); it != m_peerList.end();)
     {
-        std::vector<Ptr<Peer>>::iterator it2 = it;
+        std::map<Ptr<Peer>, std::set<std::string>>::iterator it2 = it;
         ++it2;
-        if ((*it) == peer)
+        if (it->first == peer)
         {
             m_peerList.erase(it);
-            break;
+            // break;
         }
         it = it2;
     }
 }
+
+void
+BitTorrentClient::SubscribeStream(Ptr<Peer> peer, std::string streamHash)
+{
+    if (m_peerList.find(peer) == m_peerList.end())
+    {
+        NS_LOG_WARN(this << "find peer" << peer->GetRemotePeerId() << "not registerd but create sub");
+        return;
+    }
+    m_peerList[peer].insert(streamHash);
+    if (m_subscriptionList.find(streamHash) == m_subscriptionList.end())
+    {
+        if (m_isCDN)
+        {
+            if(m_dataAvailableTimer.find(streamHash) != m_dataAvailableTimer.end())
+            {
+                NS_FATAL_ERROR("subscription didnot act with the time");
+            }
+            m_dataAvailableTimer[streamHash] = Simulator::Schedule(Seconds(1), &BitTorrentClient::StreamBufferReady, this, streamHash);
+            // TODO : Timer is 1s, is this ok?
+        }
+        m_subscriptionList[streamHash] = std::set<Ptr<Peer>>();
+    }
+    m_subscriptionList[streamHash].insert(peer);
+}
+
+void
+BitTorrentClient::UnSubscribeStream(Ptr<Peer> peer, std::string streamHash)
+{
+    if (m_peerList.find(peer) == m_peerList.end())
+    {
+        NS_LOG_WARN(this << "find peer" << peer->GetRemotePeerId() << "not registerd but unsub");
+        return;
+    }
+    m_peerList[peer].erase(streamHash);
+    if (m_subscriptionList.find(streamHash) == m_subscriptionList.end())
+    {
+        return;
+    }
+    m_subscriptionList[streamHash].erase(peer);
+    if (m_subscriptionList[streamHash].empty())
+    {
+        m_subscriptionList.erase(streamHash);
+        if (m_isCDN)
+        {
+            if(m_dataAvailableTimer.find(streamHash) == m_dataAvailableTimer.end())
+            {
+                NS_FATAL_ERROR("subscription didnot act with the time");
+            }
+            m_dataAvailableTimer[streamHash].Cancel();
+            m_dataAvailableTimer.erase(streamHash);
+        }
+    }
+}
+
+void
+BitTorrentClient::StreamBufferReady(std::string streamHash)
+{
+    //TODO how to transmit all the data
+}   
 
 bool
 BitTorrentClient::GetConnectedToCloud() const

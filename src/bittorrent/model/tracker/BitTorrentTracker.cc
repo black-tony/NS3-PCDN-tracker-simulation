@@ -319,7 +319,7 @@ BitTorrentTracker::DataCreater(std::string path, Ptr<Socket> socket, const Addre
         else
         {
             std::string eventType = (*clientInfoIt).second;
-            if (eventType.compare("started") == 0)
+            if (eventType == "started")
             {
                 if (clientInfo.find("port") == clientInfo.end() || clientInfo.find("uploaded") == clientInfo.end() ||
                     clientInfo.find("downloaded") == clientInfo.end() || clientInfo.find("left") == clientInfo.end())
@@ -336,7 +336,7 @@ BitTorrentTracker::DataCreater(std::string path, Ptr<Socket> socket, const Addre
 
                 GlobalMetricsGatherer::GetInstance()->WriteToFile("start-announced", peer_id, true);
             }
-            else if (eventType.compare("completed") == 0)
+            else if (eventType == "completed")
             {
                 (*m_cloudInfo.find(info_hash)).second.m_completed++;
                 AddClient(clientInfo);
@@ -351,12 +351,12 @@ BitTorrentTracker::DataCreater(std::string path, Ptr<Socket> socket, const Addre
                     GlobalMetricsGatherer::GetInstance()->AnnounceFinishedExternalClient();
                 }
             }
-            else if (eventType.compare("stopped") == 0)
+            else if (eventType == "stopped")
             {
                 RemoveClient(clientInfo);
                 response = GenerateResponseForPeer(clientInfo);
             }
-            else if (eventType.compare("scrape") == 0)
+            else if (eventType == "scrape")
             {
                 response = GenerateResponseForPeer(clientInfo);
             }

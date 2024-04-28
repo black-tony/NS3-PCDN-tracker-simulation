@@ -145,12 +145,14 @@ private:
   std::map<std::string, std::string>   m_strategyOptions;            // Stores the parameters passed to the protocol strategies
   std::map<std::string, std::pair<std::string, std::string> >        m_lastChangedStrategyOptions; // Provides the settings delta for the strategies. Settings in GetOptions() are the same but also include previously-set options.
   std::string                          m_lastChangedStrategyOptionName;        // If only one option was changed, this field stores its name during the StrategyOptionsChangedEvent
-
-  std::vector<Ptr<Peer> >              m_peerList;                   // Contains the list of all currently associated Peer objects (i.e., communication partners)
+  //InfoHash, peer
+  std::map<Ptr<Peer>, std::set<std::string> >              m_peerList;                   // Contains the list of all currently associated Peer objects (i.e., communication partners)
+  std::map<std::string, std::set<Ptr<Peer>> >              m_subscriptionList;                   // Contains the list of all currently associated Peer objects (i.e., communication partners)
+  std::map<std::string, EventId >              m_dataAvailableTimer;                   // Contains the list of all currently associated Peer objects (i.e., communication partners)
 
   bool                                 m_connectedToCloud;           // Whether the client is currently connected to the cloud
   bool                                 m_connectionToCloudSuspended; // Whether returns by the tracker should be processed (i.e., connections established) or not
-
+  bool m_isCDN;
 protected:
   // The main attributes of the BitTorrentClient
   std::vector<uint8_t>                 m_bitfield;                   // Client-local bitfield
@@ -205,6 +207,7 @@ private:
   Callback<void, int32_t>                        m_disconnectPeers;            // To terminate the connection to a number of peers
   Callback<void, Ptr<Peer> >                     m_disconnectPeer;             // To terminate the connection to a certain peer (e.g., if it is stale)
   Callback<uint16_t>                             m_peerCount;                  // To determine the sum of open and pending connections (more reliable than the size of the peer list)
+  Callback<std::string>                             m_peerCount;                  // To determine the sum of open and pending connections (more reliable than the size of the peer list)
 
 private:
   // TODO: Fields to rework
@@ -797,7 +800,7 @@ public:
   /**
    * @returns a vector containing pointers to the Peer class instances representing the active connections of the client.
    */
-  const std::vector<Ptr<Peer> > & GetActivePeers () const
+  const std::map<Ptr<Peer>, std::set<std::string>> & GetActivePeers () const
   {
     return m_peerList;
   }
@@ -805,12 +808,12 @@ public:
   /**
    * @returns an iterator to the beginning of the list of peers.
    */
-  std::vector<Ptr<Peer> >::const_iterator GetPeerListIterator () const;
+  std::map<Ptr<Peer>, std::set<std::string>>::const_iterator GetPeerListIterator () const;
 
   /**
    * @returns an iterator to the end of the list of peers.
    */
-  std::vector<Ptr<Peer> >::const_iterator GetPeerListEnd () const;
+  std::map<Ptr<Peer>, std::set<std::string>>::const_iterator GetPeerListEnd () const;
 
   /**
    * @returns the number of currently connected peers
@@ -834,6 +837,14 @@ public:
    */
   void UnregisterPeer (Ptr<Peer> peer);
 
+
+  void SubscribeStream (Ptr<Peer> peer, std::string streamHash);
+
+
+  void UnSubscribeStream (Ptr<Peer> peer, std::string streamHash);
+
+
+  void StreamBufferReady(std::string streamHash);
   /**
    * @returns true, if the client is currently connected to the cloud AND a suitable list of peers has been received.
    */

@@ -26,7 +26,7 @@
 #include "PeerConnectorStrategyBase.h"
 #include "RequestSchedulingStrategyBase.h"
 #include "strategies/RarestFirstPartSelectionStrategy.h"
-
+#include "streaming/PeerConnectorStrategyLive.h"
 namespace ns3
 {
 namespace bittorrent
@@ -69,6 +69,18 @@ ProtocolFactory::CreateStrategyBundle(std::string protocolName,
     {
         CreateGiveToGetProtocol(client, strategyStore, aPeerConnectorStrategy);
     }
+    else if (protocolName == "live streaming client")
+    {
+        CreateLiveStreamingClientProtocol(client, strategyStore, aPeerConnectorStrategy);
+    }
+    else if (protocolName == "live streaming box")
+    {
+        CreateLiveStreamingBoxProtocol(client, strategyStore, aPeerConnectorStrategy);
+    }
+    else if (protocolName == "live streaming server")
+    {
+        CreateLiveStreamingServerProtocol(client, strategyStore, aPeerConnectorStrategy);
+    }
     else
     {
         CreateBasicProtocol(client, strategyStore, aPeerConnectorStrategy);
@@ -99,7 +111,78 @@ ProtocolFactory::CreateBasicProtocol(Ptr<BitTorrentClient> client,
 
     aPeerConnectorStrategy = peerConnectorStrategy;
 }
+void
+ProtocolFactory::CreateLiveStreamingBoxProtocol(Ptr<BitTorrentClient> client,
+                                     std::list<Ptr<AbstractStrategy>>& strategyStore,
+                                     Ptr<PeerConnectorStrategyBase>& aPeerConnectorStrategy)
+{
+    Ptr<PeerConnectorStrategyLive> peerConnectorStrategy = Ptr<PeerConnectorStrategyLive>(new PeerConnectorStrategyLive(client), false);
+    strategyStore.push_back(peerConnectorStrategy);
+    peerConnectorStrategy->DoInitialize();
 
+    // Ptr<ChokeUnChokeStrategyBase> chokeUnChokeStrategy = Ptr<ChokeUnChokeStrategyBase>(new ChokeUnChokeStrategyBase(client), false);
+    // strategyStore.push_back(chokeUnChokeStrategy);
+    // chokeUnChokeStrategy->DoInitialize();
+
+    // Ptr<PartSelectionStrategyBase> partSelectionStrategy = Ptr<PartSelectionStrategyBase>(new PartSelectionStrategyBase(client), false);
+    // strategyStore.push_back(partSelectionStrategy);
+    // partSelectionStrategy->DoInitialize();
+
+    Ptr<RequestSchedulingStrategyBase> requestSchedulingStrategy =
+        Ptr<RequestSchedulingStrategyBase>(new RequestSchedulingStrategyBase(client), false);
+    strategyStore.push_back(requestSchedulingStrategy);
+    requestSchedulingStrategy->DoInitialize();
+
+    aPeerConnectorStrategy = peerConnectorStrategy;
+}
+void
+ProtocolFactory::CreateLiveStreamingServerProtocol(Ptr<BitTorrentClient> client,
+                                     std::list<Ptr<AbstractStrategy>>& strategyStore,
+                                     Ptr<PeerConnectorStrategyBase>& aPeerConnectorStrategy)
+{
+    // Ptr<PeerConnectorStrategyBase> peerConnectorStrategy = Ptr<PeerConnectorStrategyBase>(new PeerConnectorStrategyBase(client), false);
+    // strategyStore.push_back(peerConnectorStrategy);
+    // peerConnectorStrategy->DoInitialize();
+
+    // Ptr<ChokeUnChokeStrategyBase> chokeUnChokeStrategy = Ptr<ChokeUnChokeStrategyBase>(new ChokeUnChokeStrategyBase(client), false);
+    // strategyStore.push_back(chokeUnChokeStrategy);
+    // chokeUnChokeStrategy->DoInitialize();
+
+    // Ptr<PartSelectionStrategyBase> partSelectionStrategy = Ptr<PartSelectionStrategyBase>(new PartSelectionStrategyBase(client), false);
+    // strategyStore.push_back(partSelectionStrategy);
+    // partSelectionStrategy->DoInitialize();
+
+    // Ptr<RequestSchedulingStrategyBase> requestSchedulingStrategy =
+    //     Ptr<RequestSchedulingStrategyBase>(new RequestSchedulingStrategyBase(client), false);
+    // strategyStore.push_back(requestSchedulingStrategy);
+    // requestSchedulingStrategy->DoInitialize();
+
+    // aPeerConnectorStrategy = peerConnectorStrategy;
+}
+void
+ProtocolFactory::CreateLiveStreamingClientProtocol(Ptr<BitTorrentClient> client,
+                                     std::list<Ptr<AbstractStrategy>>& strategyStore,
+                                     Ptr<PeerConnectorStrategyBase>& aPeerConnectorStrategy)
+{
+    // Ptr<PeerConnectorStrategyBase> peerConnectorStrategy = Ptr<PeerConnectorStrategyBase>(new PeerConnectorStrategyBase(client), false);
+    // strategyStore.push_back(peerConnectorStrategy);
+    // peerConnectorStrategy->DoInitialize();
+
+    // Ptr<ChokeUnChokeStrategyBase> chokeUnChokeStrategy = Ptr<ChokeUnChokeStrategyBase>(new ChokeUnChokeStrategyBase(client), false);
+    // strategyStore.push_back(chokeUnChokeStrategy);
+    // chokeUnChokeStrategy->DoInitialize();
+
+    // Ptr<PartSelectionStrategyBase> partSelectionStrategy = Ptr<PartSelectionStrategyBase>(new PartSelectionStrategyBase(client), false);
+    // strategyStore.push_back(partSelectionStrategy);
+    // partSelectionStrategy->DoInitialize();
+
+    // Ptr<RequestSchedulingStrategyBase> requestSchedulingStrategy =
+    //     Ptr<RequestSchedulingStrategyBase>(new RequestSchedulingStrategyBase(client), false);
+    // strategyStore.push_back(requestSchedulingStrategy);
+    // requestSchedulingStrategy->DoInitialize();
+
+    // aPeerConnectorStrategy = peerConnectorStrategy;
+}
 void
 ProtocolFactory::CreateRarestFirstProtocol(Ptr<BitTorrentClient> client,
                                            std::list<Ptr<AbstractStrategy>>& strategyStore,

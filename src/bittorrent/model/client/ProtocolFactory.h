@@ -22,12 +22,13 @@
 #define PROTOCOLFACTORY_H_
 
 #include "AbstractStrategy.h"
-
 #include "BitTorrentClient.h"
 #include "PeerConnectorStrategyBase.h"
 
-namespace ns3 {
-namespace bittorrent {
+namespace ns3
+{
+namespace bittorrent
+{
 
 /**
  * \ingroup BitTorrent
@@ -41,50 +42,81 @@ namespace bittorrent {
  */
 class ProtocolFactory : public Object
 {
-public:
-// Constructors etc.
-  ProtocolFactory ();
-  virtual ~ProtocolFactory ();
+  public:
+    // Constructors etc.
+    ProtocolFactory();
+    virtual ~ProtocolFactory();
 
-// Main interaction method
-public:
-  /**
-   * \brief Create and initialize a bundle of strategy instances that together implement a specific BitTorrent-based protocol and attach them to one BitTorrentClient class instance.
-   *
-   * After a call to this method, instances of the strategy classes constituting the chosen protocol are associated with the client.
-   *
-   * Available protocol (protocolName argument, see below) in the default implementation are:
-   *
-   * * (empty) Default BitTorrent protocol according to the description on <a href="http://wiki.theory.org/BitTorrentSpecification" target="_blank">theory.org</a> with a sequential piece selection mechanism.
-   *
-   * * "rarest-first" Default BitTorrent protocol according to the description on <a href="http://wiki.theory.org/BitTorrentSpecification" target="_blank">theory.org</a> with a rarest-first selection mechanism.
-   *
-   * Note: Strategy implementations usually require the network of the client and the internal bitfield of the client to be readily initialized.
-   * You should not call this method before this state has been reached.
-   *
-   * @param protocolName the name (= internal identifier) of the strategy bundle (= protocol) to create.
-   * @param client the client that the strategy bundle is created for. Each client client instance should have exactly one strategy bundle assigned to it.
-   * @param strategyStore address of a data structure in the client storing the pointers to the created strategy instances for later reference.
-   * @param peerConnectorStrategy address of the data structure in the client storing the pointer to the part of the strategy bundle responsible for connecting peers.
-   */
-  static void                     CreateStrategyBundle (std::string protocolName, Ptr<BitTorrentClient> client, std::list<Ptr<AbstractStrategy> > &strategyStore, Ptr<PeerConnectorStrategyBase>& peerConnectorStrategy);
+    // Main interaction method
+  public:
+    /**
+     * \brief Create and initialize a bundle of strategy instances that together implement a specific BitTorrent-based protocol and attach them to one
+     * BitTorrentClient class instance.
+     *
+     * After a call to this method, instances of the strategy classes constituting the chosen protocol are associated with the client.
+     *
+     * Available protocol (protocolName argument, see below) in the default implementation are:
+     *
+     * * (empty) Default BitTorrent protocol according to the description on <a href="http://wiki.theory.org/BitTorrentSpecification"
+     * target="_blank">theory.org</a> with a sequential piece selection mechanism.
+     *
+     * * "rarest-first" Default BitTorrent protocol according to the description on <a href="http://wiki.theory.org/BitTorrentSpecification"
+     * target="_blank">theory.org</a> with a rarest-first selection mechanism.
+     *
+     * Note: Strategy implementations usually require the network of the client and the internal bitfield of the client to be readily initialized.
+     * You should not call this method before this state has been reached.
+     *
+     * @param protocolName the name (= internal identifier) of the strategy bundle (= protocol) to create.
+     * @param client the client that the strategy bundle is created for. Each client client instance should have exactly one strategy bundle assigned
+     * to it.
+     * @param strategyStore address of a data structure in the client storing the pointers to the created strategy instances for later reference.
+     * @param peerConnectorStrategy address of the data structure in the client storing the pointer to the part of the strategy bundle responsible for
+     * connecting peers.
+     */
+    static void CreateStrategyBundle(std::string protocolName,
+                                     Ptr<BitTorrentClient> client,
+                                     std::list<Ptr<AbstractStrategy>>& strategyStore,
+                                     Ptr<PeerConnectorStrategyBase>& peerConnectorStrategy);
 
-// Methods for creating the implemented protocols
-private:
-  // Creates the standard BitTorrent protocol with sequential piece selection (i.e., from "left to right" through the bitfield)
-  static void                     CreateBasicProtocol (Ptr<BitTorrentClient> client, std::list<Ptr<AbstractStrategy> > &strategyStore, Ptr<PeerConnectorStrategyBase>& peerConnectorStrategy);
-  // Creates the standard BitTorrent protocol with the rarest-first piece selection heuristic
-  static void                     CreateRarestFirstProtocol (Ptr<BitTorrentClient> client, std::list<Ptr<AbstractStrategy> > &strategyStore, Ptr<PeerConnectorStrategyBase>& peerConnectorStrategy);
+    // Methods for creating the implemented protocols
+  private:
+    // Creates the standard BitTorrent protocol with sequential piece selection (i.e., from "left to right" through the bitfield)
+    static void CreateBasicProtocol(Ptr<BitTorrentClient> client,
+                                    std::list<Ptr<AbstractStrategy>>& strategyStore,
+                                    Ptr<PeerConnectorStrategyBase>& peerConnectorStrategy);
+    static void CreateLiveStreamingBoxProtocol(Ptr<BitTorrentClient> client,
+                                               std::list<Ptr<AbstractStrategy>>& strategyStore,
+                                               Ptr<PeerConnectorStrategyBase>& aPeerConnectorStrategy);
+    static void CreateLiveStreamingServerProtocol(Ptr<BitTorrentClient> client,
+                                                  std::list<Ptr<AbstractStrategy>>& strategyStore,
+                                                  Ptr<PeerConnectorStrategyBase>& aPeerConnectorStrategy);
+    static void CreateLiveStreamingClientProtocol(Ptr<BitTorrentClient> client,
+                                                  std::list<Ptr<AbstractStrategy>>& strategyStore,
+                                                  Ptr<PeerConnectorStrategyBase>& aPeerConnectorStrategy);
+    // static void CreateLiveStreamingProtocol(Ptr<BitTorrentClient> client,
+    //                                         std::list<Ptr<AbstractStrategy>>& strategyStore,
+    //                                         Ptr<PeerConnectorStrategyBase>& aPeerConnectorStrategy);
+    // Creates the standard BitTorrent protocol with the rarest-first piece selection heuristic
+    static void CreateRarestFirstProtocol(Ptr<BitTorrentClient> client,
+                                          std::list<Ptr<AbstractStrategy>>& strategyStore,
+                                          Ptr<PeerConnectorStrategyBase>& peerConnectorStrategy);
 
-  // RENE: NOT YET PORTED TO NEW VERSION: Creates the standard BitTorrent protocol with rarest-first heuristic that leaves out pieces before the playback point
-  static void                     CreateRarestFirstVoDProtocol (Ptr<BitTorrentClient> client, std::list<Ptr<AbstractStrategy> > &strategyStore, Ptr<PeerConnectorStrategyBase>& peerConnectorStrategy);
+    // RENE: NOT YET PORTED TO NEW VERSION: Creates the standard BitTorrent protocol with rarest-first heuristic that leaves out pieces before the
+    // playback point
+    static void CreateRarestFirstVoDProtocol(Ptr<BitTorrentClient> client,
+                                             std::list<Ptr<AbstractStrategy>>& strategyStore,
+                                             Ptr<PeerConnectorStrategyBase>& peerConnectorStrategy);
 
-  // RENE: NOT YET PORTED TO NEW VERSION: Creates the BiToS protocol by Vlavianos, Iliofotou and Faloutsos
-  static void                     CreateBiToSProtocol (Ptr<BitTorrentClient> client, std::list<Ptr<AbstractStrategy> > &strategyStore, Ptr<PeerConnectorStrategyBase>& peerConnectorStrategy);
-  // RENE: NOT YET PROTED TO NEW VERSION: Creates the Give-to-Get protocol by Mol, Pouwelse, Meulpolder, Epema and Sips
-  static void                     CreateGiveToGetProtocol (Ptr<BitTorrentClient> client, std::list<Ptr<AbstractStrategy> > &strategyStore, Ptr<PeerConnectorStrategyBase>& peerConnectorStrategy);
+    // RENE: NOT YET PORTED TO NEW VERSION: Creates the BiToS protocol by Vlavianos, Iliofotou and Faloutsos
+    static void CreateBiToSProtocol(Ptr<BitTorrentClient> client,
+                                    std::list<Ptr<AbstractStrategy>>& strategyStore,
+                                    Ptr<PeerConnectorStrategyBase>& peerConnectorStrategy);
+    // RENE: NOT YET PROTED TO NEW VERSION: Creates the Give-to-Get protocol by Mol, Pouwelse, Meulpolder, Epema and Sips
+    static void CreateGiveToGetProtocol(Ptr<BitTorrentClient> client,
+                                        std::list<Ptr<AbstractStrategy>>& strategyStore,
+                                        Ptr<PeerConnectorStrategyBase>& peerConnectorStrategy);
 };
 
-} // ns bittorrent
-} // ns ns3
+} // namespace bittorrent
+} // namespace ns3
 #endif /* PROTOCOLFACTORY_H_ */
