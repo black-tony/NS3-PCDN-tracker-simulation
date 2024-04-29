@@ -87,10 +87,11 @@ class Peer : public Object
         uint32_t pieceIndex;
         uint32_t blockOffSet;
         uint32_t blockLength;
+        bool isSegment;
 
         bool operator==(const RequestInformation& lhs) const
         {
-            return pieceIndex == lhs.pieceIndex && blockOffSet == lhs.blockOffSet && blockLength == lhs.blockLength;
+            return isSegment == lhs.isSegment && pieceIndex == lhs.pieceIndex && blockOffSet == lhs.blockOffSet && blockLength == lhs.blockLength;
         }
     };
 
@@ -271,6 +272,11 @@ class Peer : public Object
      */
     void SendBlock(uint32_t pieceIndex, uint32_t blockOffSet, uint32_t blockLength);
 
+    void SendSegment(std::string streamHash);
+
+    void SendSubscribe(std::string streamHash);
+    void SendUnSubscribe(std::string streamHash);
+
     /**
      * \brief Send an BitTorrent Extension Protocol message to the peer.
      *
@@ -445,6 +451,8 @@ class Peer : public Object
     // Handling of PIECE messages
     bool HandlePiece(Ptr<Packet> packet, uint32_t packetLength);
 
+    bool HandleSegment(Ptr<Packet> packet, uint32_t packetLength);
+
     // The main method for reading from the TCP socket's stream
     void HandleRead(Ptr<Socket> socket);
 
@@ -454,8 +462,8 @@ class Peer : public Object
     // Handler for the data sent callback of the socket. Calculates the transmitted data.
     void HandleDataSent(Ptr<Socket> socket, uint32_t dataSent);
 
-    void HandleSubscrbe(Ptr<Socket> socket, const std::string &streamHash);
-    void HandleUnSubscrbe(Ptr<Socket> socket, const std::string &streamHash);
+    void HandleSubscrbe(Ptr<Socket> socket, const std::string& streamHash);
+    void HandleUnSubscrbe(Ptr<Socket> socket, const std::string& streamHash);
 
     // Connection-related event handlers
     void HandleConnected(Ptr<Socket> socket);

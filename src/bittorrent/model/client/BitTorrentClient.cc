@@ -24,7 +24,7 @@
 #include "AbstractStrategy.h"
 #include "ProtocolFactory.h"
 #include "StorageManager.h"
-
+// #include "callback.h"
 #include "ns3/BitTorrentDefines.h"
 #include "ns3/BitTorrentUtilities.h"
 #include "ns3/GlobalMetricsGatherer.h"
@@ -86,6 +86,7 @@ BitTorrentClient::BitTorrentClient()
 
     m_connectedToCloud = false;
     m_connectionToCloudSuspended = false;
+    m_streamHash = BT_STREAM_DEFAULT_HASH;
 }
 
 BitTorrentClient::~BitTorrentClient()
@@ -126,7 +127,7 @@ BitTorrentClient::StartApplication()
     // Step 1: Find out our connection settings (IP address) and store them for easy access
     m_ip = GetNode()->GetObject<Ipv4>()->GetAddress(m_interfaceId, 0).GetLocal();
     m_interface = GetNode()->GetDevice(m_interfaceId);
-
+    /*
     // Step 2: Check whether the needed torrent is loaded correctly and set the data retrieval pointer accordingly
     StorageManager::GetInstance()->EnsureFileLoaded(m_torrent->GetDataPath() + "/" + m_torrent->GetFileName());
     m_torrentDataPtr = StorageManager::GetInstance()->GetBufferForFile(m_torrent->GetDataPath() + "/" + m_torrent->GetFileName());
@@ -239,7 +240,7 @@ BitTorrentClient::StartApplication()
             /*
              * Adaption of a "bit counting" algorithm by Brian Kernighan,
              * see http://www-graphics.stanford.edu/~seander/bithacks.html#CountBitsSetKernighan
-             */
+
             while (byte)
             {
                 byte &= byte - 1; // Clear the least significant bit set
@@ -271,7 +272,7 @@ BitTorrentClient::StartApplication()
             break;
         }
     }
-
+    */
     // Step 4: Initialize the desired protocol (also referred to as a "strategy bundle")
     Ptr<PeerConnectorStrategyBase> pcs; // Retrieves the peer connector strategy returned by the protocol
     ProtocolFactory::CreateStrategyBundle(m_protocol, this, m_strategyList, pcs);
@@ -305,6 +306,12 @@ BitTorrentClient::StartApplication()
 }
 
 void
+BitTorrentClient::SetStreamHash(std::string streamHash)
+{
+    m_streamHash = streamHash;
+}
+
+void
 BitTorrentClient::SetTorrent(Ptr<Torrent> torrent)
 {
     if (!(bool)m_torrent)
@@ -326,6 +333,12 @@ std::string
 BitTorrentClient::GetInitialBitfield() const
 {
     return m_bitfieldFillType;
+}
+
+std::string
+BitTorrentClient::GetClientType() const
+{
+    return m_clientType;
 }
 
 void
@@ -688,14 +701,24 @@ BitTorrentClient::SubscribeStream(Ptr<Peer> peer, std::string streamHash)
     m_peerList[peer].insert(streamHash);
     if (m_subscriptionList.find(streamHash) == m_subscriptionList.end())
     {
-        if (m_isCDN)
+        if (m_clientType == "CDN")
         {
-            if(m_dataAvailableTimer.find(streamHash) != m_dataAvailableTimer.end())
+            if (m_dataAvailableTimer.find(streamHash) != m_dataAvailableTimer.end())
             {
                 NS_FATAL_ERROR("subscription didnot act with the time");
             }
             m_dataAvailableTimer[streamHash] = Simulator::Schedule(Seconds(1), &BitTorrentClient::StreamBufferReady, this, streamHash);
-            // TODO : Timer is 1s, is this ok?
+            // YTODO : Timer is 1s, is this ok?
+        }
+        else if (m_clientType == "PCDN")
+        {
+            // YTODO currently we think no sub = no upperstream, but maybe we can hold or pre-create the upperstream
+            NS_ASSERT(m_upperStreamList.find(streamHash) == m_upperStreamList.end());
+            GetSeederEvent(streamHash);
+        }
+        else
+        {
+            NS_FATAL_ERROR("USER should NOT be subed");
         }
         m_subscriptionList[streamHash] = std::set<Ptr<Peer>>();
     }
@@ -711,6 +734,10 @@ BitTorrentClient::UnSubscribeStream(Ptr<Peer> peer, std::string streamHash)
         return;
     }
     m_peerList[peer].erase(streamHash);
+    if(m_peerList[peer].empty())
+    {
+        //YTODO should we unregister or close connect to this peer?
+    }
     if (m_subscriptionList.find(streamHash) == m_subscriptionList.end())
     {
         return;
@@ -719,14 +746,82 @@ BitTorrentClient::UnSubscribeStream(Ptr<Peer> peer, std::string streamHash)
     if (m_subscriptionList[streamHash].empty())
     {
         m_subscriptionList.erase(streamHash);
-        if (m_isCDN)
+        if (m_clientType == "CDN")
         {
-            if(m_dataAvailableTimer.find(streamHash) == m_dataAvailableTimer.end())
+            if (m_dataAvailableTimer.find(streamHash) == m_dataAvailableTimer.end())
             {
                 NS_FATAL_ERROR("subscription didnot act with the time");
             }
             m_dataAvailableTimer[streamHash].Cancel();
             m_dataAvailableTimer.erase(streamHash);
+        }
+        else if (m_clientType == "PCDN")
+        {
+            // YTODO : unregister to CDN
+        }
+        else
+        {
+            NS_FATAL_ERROR("USER should NOT be unsubed");
+        }
+    }
+}
+
+void
+BitTorrentClient::RegisterUpperStream(Ptr<Peer> peer, std::string streamHash)
+{
+    if (m_peerList.find(peer) == m_peerList.end())
+    {
+        NS_LOG_WARN(this << "find peer" << peer->GetRemotePeerId() << "not registerd but create sub");
+        return;
+    }
+    m_peerList[peer].insert(streamHash);
+    if (m_upperStreamList.find(streamHash) == m_upperStreamList.end())
+    {
+        if (m_clientType == "CDN")
+        {
+            NS_FATAL_ERROR("CDN DO NOT HAVE UPPER STREAM");
+           
+        }
+        m_upperStreamList[streamHash] = std::set<Ptr<Peer>>();
+    }
+    m_upperStreamList[streamHash].insert(peer);
+}
+
+void
+BitTorrentClient::UnRegisterUpperStream(Ptr<Peer> peer, std::string streamHash)
+{
+    if (m_peerList.find(peer) == m_peerList.end())
+    {
+        NS_LOG_WARN(this << "find peer" << peer->GetRemotePeerId() << "not registerd but unsub");
+        return;
+    }
+    m_peerList[peer].erase(streamHash);
+    if(m_peerList[peer].empty())
+    {
+        //YTODO should we unregister or close connect to this peer?
+    }
+    if (m_upperStreamList.find(streamHash) == m_upperStreamList.end())
+    {
+        return;
+    }
+    m_upperStreamList[streamHash].erase(peer);
+    if (m_upperStreamList[streamHash].empty())
+    {
+        m_upperStreamList.erase(streamHash);
+        if (m_clientType == "CDN")
+        {
+            NS_FATAL_ERROR("CDN DONT HAVE UPPER STREAM");
+            
+        }
+        else if (m_clientType == "PCDN")
+        {
+            //YTODO upper stream is empty, which case, should we unregister all downstreams?
+        }
+        else
+        {
+            // upper stream is empty, means already scheduled close connect event
+            // do nothing
+
         }
     }
 }
@@ -734,8 +829,42 @@ BitTorrentClient::UnSubscribeStream(Ptr<Peer> peer, std::string streamHash)
 void
 BitTorrentClient::StreamBufferReady(std::string streamHash)
 {
-    //TODO how to transmit all the data
-}   
+    std::list<Callback<void, std::string>>::iterator iter = m_streamBufferReadyEventListeners.begin();
+    for (; iter != m_streamBufferReadyEventListeners.end(); ++iter)
+    {
+        (*iter)(streamHash);
+    }
+}
+
+void
+BitTorrentClient::GetSeederEvent(std::string streamHash)
+{
+    std::list<Callback<void, std::string>>::iterator iter = m_getSeederEventListeners.begin();
+    for (; iter != m_getSeederEventListeners.end(); ++iter)
+    {
+        (*iter)(streamHash);
+    }
+}
+
+std::set<Ptr<Peer>>::const_iterator
+BitTorrentClient::GetSubscriptionListIterator(std::string streamHash) const
+{
+    if (m_subscriptionList.find(streamHash) == m_subscriptionList.end())
+    {
+        return std::set<Ptr<Peer>>::const_iterator();
+    }
+    return m_subscriptionList.find(streamHash)->second.begin();
+}
+
+std::set<Ptr<Peer>>::const_iterator
+BitTorrentClient::GetSubscriptionListEnd(std::string streamHash) const
+{
+    if (m_subscriptionList.find(streamHash) == m_subscriptionList.end())
+    {
+        return std::set<Ptr<Peer>>::const_iterator();
+    }
+    return m_subscriptionList.find(streamHash)->second.end();
+}
 
 bool
 BitTorrentClient::GetConnectedToCloud() const
@@ -767,7 +896,7 @@ BitTorrentClient::ApplicationInitializedEvent()
     std::list<Callback<void, Ptr<BitTorrentClient>>>::iterator iter = m_applicationInitializedEventListeners.begin();
     for (; iter != m_applicationInitializedEventListeners.end(); ++iter)
     {
-        (*iter);
+        (*iter)(this);
     }
 }
 
@@ -1521,6 +1650,46 @@ BitTorrentClient::UnregisterCallbackGatherMetricsEvent(Callback<std::map<std::st
         if (iter->IsEqual(eventCallback))
         {
             m_gatherMetricsEventListeners.erase(iter);
+            break;
+        }
+    }
+}
+
+void
+BitTorrentClient::RegisterCallbackStreamBufferReadyEvent(Callback<void, std::string> eventCallback)
+{
+    m_streamBufferReadyEventListeners.push_back(eventCallback);
+}
+
+void
+BitTorrentClient::UnregisterCallbackStreamBufferReadEvent(Callback<void, std::string> eventCallback)
+{
+    std::list<Callback<void, std::string>>::iterator iter = m_streamBufferReadyEventListeners.begin();
+    for (; iter != m_streamBufferReadyEventListeners.end(); ++iter)
+    {
+        if (iter->IsEqual(eventCallback))
+        {
+            m_streamBufferReadyEventListeners.erase(iter);
+            break;
+        }
+    }
+}
+
+void
+BitTorrentClient::RegisterCallbackGetSeederEvent(Callback<void, std::string> eventCallback)
+{
+    m_getSeederEventListeners.push_back(eventCallback);
+}
+
+void
+BitTorrentClient::UnregisterCallbackGetSeederEvent(Callback<void, std::string> eventCallback)
+{
+    std::list<Callback<void, std::string>>::iterator iter = m_getSeederEventListeners.begin();
+    for (; iter != m_getSeederEventListeners.end(); ++iter)
+    {
+        if (iter->IsEqual(eventCallback))
+        {
+            m_getSeederEventListeners.erase(iter);
             break;
         }
     }

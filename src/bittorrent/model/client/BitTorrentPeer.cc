@@ -413,7 +413,55 @@ Peer::SendBlock(uint32_t pieceIndex, uint32_t blockOffSet, uint32_t blockLength)
     // Blocks (PIECE messages) are handled separately by HandleSend, just call it
     HandleSend(m_peerSocket, m_peerSocket->GetTxAvailable());
 }
+void
+Peer::SendSegment(std::string streamHash)
+{
+    if (m_connectionState != CONN_STATE_CONNECTED)
+    {
+        return;
+    }
 
+    Ptr<Packet> packet = Create<Packet>();
+
+    //YTODO send Segment
+    RequestInformation reqInfo;
+    reqInfo.pieceIndex = pieceIndex;
+    reqInfo.blockOffSet = blockOffSet;
+    reqInfo.blockLength = std::min(m_myClient->GetTorrent()->GetPieceLength() - blockOffSet, blockLength);
+
+    Ptr<Packet> dummyPacket = Create<Packet>();
+
+    m_sendQueue.push_back(dummyPacket);
+    m_sendQueuePieceMessageIndicators.push_back(true);
+    m_requestQueue.push_back(reqInfo);
+
+    // Blocks (PIECE messages) are handled separately by HandleSend, just call it
+    HandleSend(m_peerSocket, m_peerSocket->GetTxAvailable());
+}
+
+void
+Peer::SendSubscribe(std::string streamHash)
+{
+    if(m_remoteHashInfo.find(streamHash) != m_remoteHashInfo.end())
+    {
+        NS_FATAL_ERROR("subscribe already sub stream");
+    }
+    m_remoteHashInfo.insert(streamHash);
+    //YTODO generate packet
+    HandleSend(m_peerSocket, m_peerSocket->GetTxAvailable());
+}
+void
+Peer::SendUnSubscribe(std::string streamHash)
+{
+    if(m_remoteHashInfo.find(streamHash) == m_remoteHashInfo.end())
+    {
+        NS_FATAL_ERROR("subscribe already unsub stream");
+    }
+    m_remoteHashInfo.erase(streamHash);
+    //YTODO generate packet
+
+    HandleSend(m_peerSocket, m_peerSocket->GetTxAvailable());
+}
 void
 Peer::SendExtendedMessage(uint8_t messageId, const std::string& message)
 {
@@ -699,7 +747,57 @@ Peer::HandlePiece(Ptr<Packet> packet, uint32_t packetLength)
 
     return true; // i.e., there is more data left to receive until the block can be finished
 }
+bool
+Peer::HandleSegment(Ptr<Packet> packet, uint32_t packetLength)
+{
+    //YTODO How To Recv Msg
 
+    BitTorrentPieceMessage pieceMsg;
+    packet->RemoveHeader(pieceMsg);
+
+    uint32_t blockLength = packetLength - BT_PROTOCOL_MESSAGES_PIECE_LENGTH_MIN;
+    uint32_t blockPieceIndex = pieceMsg.GetIndex();
+    uint32_t blockBlockOffSet = pieceMsg.GetBegin();
+
+    if (m_blockBufferSize < blockLength)
+    {
+        delete[] m_blockBuffer;
+        m_blockBuffer = nullptr;
+        m_blockBuffer = new uint8_t[blockLength];
+        m_blockBufferSize = blockLength;
+    }
+
+    uint32_t dataToRead = std::min(packet->GetSize(), blockLength);
+    m_totalBytesDownloaded += dataToRead;
+
+    packet->CopyData(m_blockBuffer, dataToRead);
+    packet->RemoveAtStart(dataToRead);
+
+    if (blockLength - dataToRead == 0)
+    {
+        if (m_myClient->GetCheckDownloadedData())
+        {
+            if (std::memcmp(m_blockBuffer,
+                            m_myClient->GetTorrentDataBuffer() + blockPieceIndex * m_myClient->GetTorrent()->GetPieceLength() + blockBlockOffSet,
+                            blockLength) == 0)
+            {
+                m_pieceCorruptionMap[blockPieceIndex] = BT_PEER_PIECE_RECEPTION_CHECKSUM_OK;
+            }
+            else
+            {
+                m_pieceCorruptionMap[blockPieceIndex] = BT_PEER_PIECE_RECEPTION_CHECKSUM_NOT_OK;
+            }
+        }
+
+        // Call the BlockCompletedEvent for this block (even if it was not downloaded correctly,
+        // that case is also handled in the called method)
+        m_myClient->StreamBufferReady(streamhash);
+
+        return false; // i.e., there is no more data left to receive
+    }
+
+    return true; // i.e., there is more data left to receive until the block can be finished
+}
 void
 Peer::HandleRead(Ptr<Socket> socket)
 {
@@ -900,6 +998,10 @@ Peer::HandleRead(Ptr<Socket> socket)
                     HandleUnSubscrbe(socket, std::string(subMsg.GetStreamHash()));
 
                     break;
+                }
+                case BitTorrentTypeHeader::SEGMENT:{
+                    HandleSegment(m_packetBuffer, m_lengthHeader.GetPacketLength());
+                    break;                    
                 }
                 default: {
                     m_packetBuffer->RemoveAtStart(m_lengthHeader.GetPacketLength());

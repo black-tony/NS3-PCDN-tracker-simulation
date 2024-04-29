@@ -242,6 +242,7 @@ public:
     EXTENDED = 20,  // BitTorrent Extension Protocol according to BEP-10,
     SUBSCRIBE = 21,
     UNSUBSCRIBE = 22,
+    SEGMENT = 23,
 	HANDSHAKE = 128
   };
 

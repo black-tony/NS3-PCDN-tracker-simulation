@@ -64,7 +64,8 @@ public:
     STARTED = 0,
     STOPPED = 1,
     COMPLETED = 2,
-    REGULAR_UPDATE = 3
+    REGULAR_UPDATE = 3,
+    GET_SEEDER = 4
   };
 
 // Fields

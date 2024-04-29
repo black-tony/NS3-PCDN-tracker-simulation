@@ -27,6 +27,7 @@
 #include "RequestSchedulingStrategyBase.h"
 #include "strategies/RarestFirstPartSelectionStrategy.h"
 #include "streaming/PeerConnectorStrategyLive.h"
+#include "streaming/RequestSchedulingStrategyLive.h"
 namespace ns3
 {
 namespace bittorrent
@@ -128,8 +129,8 @@ ProtocolFactory::CreateLiveStreamingBoxProtocol(Ptr<BitTorrentClient> client,
     // strategyStore.push_back(partSelectionStrategy);
     // partSelectionStrategy->DoInitialize();
 
-    Ptr<RequestSchedulingStrategyBase> requestSchedulingStrategy =
-        Ptr<RequestSchedulingStrategyBase>(new RequestSchedulingStrategyBase(client), false);
+    Ptr<RequestSchedulingStrategyLive> requestSchedulingStrategy =
+        Ptr<RequestSchedulingStrategyLive>(new RequestSchedulingStrategyLive(client), false);
     strategyStore.push_back(requestSchedulingStrategy);
     requestSchedulingStrategy->DoInitialize();
 

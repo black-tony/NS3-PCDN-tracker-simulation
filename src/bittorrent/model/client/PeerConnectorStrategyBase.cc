@@ -324,7 +324,7 @@ PeerConnectorStrategyBase::DisconnectPeers(int32_t count)
     {
         NS_LOG_INFO("PeerConnectorStrategyBase: " << m_myClient->GetIp() << ":  Disconnecting all peers.");
 
-        std::map<std::string, Ptr<Peer>>::const_iterator it = m_myClient->GetPeerListIterator();
+        std::map<Ptr<Peer>, std::set<std::string>>::const_iterator it = m_myClient->GetPeerListIterator();
         for (; it != m_myClient->GetPeerListEnd(); ++it)
         {
             Simulator::Schedule(MilliSeconds(1), &PeerConnectorStrategyBase::DisconnectPeer, this, it->second);
@@ -332,7 +332,7 @@ PeerConnectorStrategyBase::DisconnectPeers(int32_t count)
     }
     else
     {
-        std::map<std::string, Ptr<Peer>>::const_iterator it = m_myClient->GetPeerListIterator();
+        std::map<Ptr<Peer>, std::set<std::string>>::const_iterator it = m_myClient->GetPeerListIterator();
         uint32_t disconnect = std::min(static_cast<uint32_t>(m_myClient->GetConnectedPeerCount()), static_cast<uint32_t>(count));
 
         for (; disconnect > 0; --disconnect, ++it)
@@ -677,7 +677,7 @@ PeerConnectorStrategyBase::CheckAndDisconnectIfRejected(Ptr<Peer> peer)
     }
     else // Else, fully register the peer with the client
     {
-        m_myClient->RegisterPeer(peer->GetRemoteInfoHash(), peer);
+        m_myClient->RegisterPeer(peer);
         m_myClient->PeerConnectionEstablishedEvent(peer);
 
         NS_LOG_INFO("PeerConnectorStrategyBase: " << m_myClient->GetIp() << ": Fully established connection with " << peer->GetRemoteIp() << ":"
@@ -786,6 +786,8 @@ PeerConnectorStrategyBase::ContactTracker(TrackerContactReason event,
     case COMPLETED:
         request << "&event=completed";
         break;
+    case GET_SEEDER:
+        request << "&event=getseeder";
     default:
         break;
     }
@@ -895,13 +897,13 @@ PeerConnectorStrategyBase::ProcessDownloadCompleteEvent()
 {
     // In case of a completed download, we close the connection to already-known seederss so we don't keep unnecessary connections
     // The calculation is the same as in ProcessPeerBitfieldReceivedEvent()
-    for (std::vector<Ptr<Peer>>::const_iterator it = m_myClient->GetPeerListIterator(); it != m_myClient->GetPeerListEnd(); ++it)
+    for (std::map<Ptr<Peer>, std::set<std::string>>::const_iterator it = m_myClient->GetPeerListIterator(); it != m_myClient->GetPeerListEnd(); ++it)
     {
         bool completed = true;
         uint32_t i = 0;
         while (completed && i < m_myClient->GetTorrent()->GetNumberOfPieces())
         {
-            if (!(*it)->HasPiece(i))
+            if (!(it->first->HasPiece(i)))
             {
                 completed = false;
             }
@@ -910,11 +912,11 @@ PeerConnectorStrategyBase::ProcessDownloadCompleteEvent()
 
         if (completed)
         {
-            m_knownSeeders.insert((*it)->GetRemoteIp().Get());
+            m_knownSeeders.insert((it->first)->GetRemoteIp().Get());
             Simulator::Schedule(Seconds(5), &PeerConnectorStrategyBase::DisconnectPeer, this, *it);
 
-            NS_LOG_INFO("PeerConnectorStrategyBase: " << m_myClient->GetIp() << ": Disconnecting from also finished peer " << (*it)->GetRemoteIp()
-                                                      << ":" << (*it)->GetRemotePort() << ".");
+            NS_LOG_INFO("PeerConnectorStrategyBase: " << m_myClient->GetIp() << ": Disconnecting from also finished peer " << (it->first)->GetRemoteIp()
+                                                      << ":" << (it->first)->GetRemotePort() << ".");
         }
     }
 }

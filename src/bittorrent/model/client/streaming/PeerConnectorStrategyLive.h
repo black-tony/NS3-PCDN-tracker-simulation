@@ -59,6 +59,8 @@ class Peer;
  */
 class PeerConnectorStrategyLive : public PeerConnectorStrategyBase
 {
+private:
+    std::set<std::pair<std::string, std::pair<uint32_t, uint16_t>>> m_potentialClients;
 public:
     PeerConnectorStrategyLive(Ptr<BitTorrentClient> myClient);
     ~PeerConnectorStrategyLive() override;
@@ -67,6 +69,24 @@ public:
     void ProcessPeriodicSchedule() override;
     void ProcessPeriodicReannouncements () override;
     void ConnectToCloud() override;
+    void GetSeeder(std::string streamHash);
+    uint16_t ConnectToPeers (uint16_t count) override;
+    /**
+   * \brief Parse the bencoded response received from the peer discovery mechanism.
+   *
+   * This method inserts peers found within the response into the internal list of available peers.
+   *
+   * @param response an istream object containing the response of the peer discovery mechanism.
+   */
+  void ParseResponse (std::istream &response) override;
+  public:
+    /**
+   * \brief Get the list of clients that the client has so far discovered.
+   *
+   * @returns a list of <IP, port> pairs representing the clients so far discovered.
+   */
+  const std::set<std::pair<std::string, std::pair<uint32_t, uint16_t>>> & GetPotentialClients () const;
+    void DoInitialize() override;
     // bool ContactTracker (TrackerContactReason event, uint16_t numwant, std::map<std::string, std::string> additionalParameters, bool closeCurrentConnection) override;
 };
 
