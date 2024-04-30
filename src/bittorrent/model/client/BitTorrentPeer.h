@@ -88,10 +88,11 @@ class Peer : public Object
         uint32_t blockOffSet;
         uint32_t blockLength;
         bool isSegment;
+        std::string streamHash;
 
         bool operator==(const RequestInformation& lhs) const
         {
-            return isSegment == lhs.isSegment && pieceIndex == lhs.pieceIndex && blockOffSet == lhs.blockOffSet && blockLength == lhs.blockLength;
+            return isSegment && streamHash == lhs.streamHash || pieceIndex == lhs.pieceIndex && blockOffSet == lhs.blockOffSet && blockLength == lhs.blockLength;
         }
     };
 

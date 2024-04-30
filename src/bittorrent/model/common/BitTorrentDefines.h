@@ -29,6 +29,8 @@
 #define BITTORRENTCLIENT_DEFINES_H_
 
 #define BT_STREAM_DEFAULT_HASH "356A192B7913B04C54574D18C28D46E6395428AB"
+#define BT_STREAM_DEFAULT_SEGMENT_SIZE 500 * 1000 / 8
+#define BT_STREAM_SUBSCRIBE_LENGTH 41
 #define BT_PEER_SOCKET_TRANSMIT_BUFFER_SIZE 65536 // In bytes; per client connection
 #define BT_PEER_SOCKET_RECEIVE_BUFFER_SIZE 65536 // In bytes; per client connection 125000000 = Maximum bytes in Gigabit Ethernet per second
 #define BT_PEER_SOCKET_TCP_SEGMENT_SIZE_MAX 1452 // In bytes; per client connection; 1452 = Maximum segment size for most access providers (PPPoE); 536 = Default for many systems

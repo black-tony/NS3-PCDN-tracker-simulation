@@ -97,6 +97,7 @@ PeerConnectorStrategyLive::ProcessPeriodicReannouncements()
 void
 PeerConnectorStrategyLive::ConnectToCloud()
 {
+    //YTODO client connect to cloud with self hash to get seeders 
     NS_LOG_INFO("PeerConnectorStrategyLive: " << m_myClient->GetIp() << ": Contacting tracker to join cloud...");
 
     std::map<std::string, std::string> additionalParameters;
@@ -121,7 +122,7 @@ PeerConnectorStrategyLive::GetSeeder(std::string streamHash)
 uint16_t
 PeerConnectorStrategyLive::ConnectToPeers(uint16_t count)
 {
-    //YTODO
+    //YTODO 因为要覆盖potential peers, 所以需要重新注册
     return 0;
 }
 
@@ -315,6 +316,9 @@ PeerConnectorStrategyLive::DoInitialize()
 {
     PeerConnectorStrategyBase::DoInitialize();
     m_myClient->RegisterCallbackGetSeederEvent(MakeCallback(&PeerConnectorStrategyLive::GetSeeder, this));
+    // this covered the parent class's connectToPeers function
+    m_myClient->SetCallbackConnectToPeers(MakeCallback(&PeerConnectorStrategyLive::ConnectToPeers, this));
+    // m_myClient->
     // m_myClient->RegisterCallbackStreamBufferReadyEvent(MakeCallback(&PeerConnectorStrategyLive::OnStreamBufferReady, this))
 }
 

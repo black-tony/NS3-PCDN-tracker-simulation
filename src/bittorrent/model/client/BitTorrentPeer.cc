@@ -413,6 +413,7 @@ Peer::SendBlock(uint32_t pieceIndex, uint32_t blockOffSet, uint32_t blockLength)
     // Blocks (PIECE messages) are handled separately by HandleSend, just call it
     HandleSend(m_peerSocket, m_peerSocket->GetTxAvailable());
 }
+
 void
 Peer::SendSegment(std::string streamHash)
 {
@@ -421,13 +422,14 @@ Peer::SendSegment(std::string streamHash)
         return;
     }
 
-    Ptr<Packet> packet = Create<Packet>();
+    // Ptr<Packet> packet = Create<Packet>();
 
-    //YTODO send Segment
     RequestInformation reqInfo;
-    reqInfo.pieceIndex = pieceIndex;
-    reqInfo.blockOffSet = blockOffSet;
-    reqInfo.blockLength = std::min(m_myClient->GetTorrent()->GetPieceLength() - blockOffSet, blockLength);
+    reqInfo.isSegment = true;
+    reqInfo.streamHash = streamHash;
+    // reqInfo.pieceIndex = pieceIndex;
+    // reqInfo.blockOffSet = blockOffSet;
+    reqInfo.blockLength = BT_STREAM_DEFAULT_SEGMENT_SIZE;
 
     Ptr<Packet> dummyPacket = Create<Packet>();
 
@@ -442,26 +444,48 @@ Peer::SendSegment(std::string streamHash)
 void
 Peer::SendSubscribe(std::string streamHash)
 {
-    if(m_remoteHashInfo.find(streamHash) != m_remoteHashInfo.end())
+    if (m_remoteHashInfo.find(streamHash) != m_remoteHashInfo.end())
     {
         NS_FATAL_ERROR("subscribe already sub stream");
     }
     m_remoteHashInfo.insert(streamHash);
-    //YTODO generate packet
+    Ptr<Packet> packet = Create<Packet>();
+
+    BitTorrentLengthHeader lenHead(1 + BT_STREAM_SUBSCRIBE_LENGTH);
+    BitTorrentTypeHeader typeHead(BitTorrentTypeHeader::SUBSCRIBE);
+    BitTorrentSubscriptionMessage subMsg(streamHash.c_str());
+    packet->AddHeader(subMsg);
+    packet->AddHeader(typeHead);
+    packet->AddHeader(lenHead);
+
+    m_sendQueue.push_back(packet);
+    m_sendQueuePieceMessageIndicators.push_back(false);
     HandleSend(m_peerSocket, m_peerSocket->GetTxAvailable());
 }
+
 void
 Peer::SendUnSubscribe(std::string streamHash)
 {
-    if(m_remoteHashInfo.find(streamHash) == m_remoteHashInfo.end())
+    if (m_remoteHashInfo.find(streamHash) == m_remoteHashInfo.end())
     {
         NS_FATAL_ERROR("subscribe already unsub stream");
     }
     m_remoteHashInfo.erase(streamHash);
-    //YTODO generate packet
+    Ptr<Packet> packet = Create<Packet>();
+
+    BitTorrentLengthHeader lenHead(1 + BT_STREAM_SUBSCRIBE_LENGTH);
+    BitTorrentTypeHeader typeHead(BitTorrentTypeHeader::UNSUBSCRIBE);
+    BitTorrentSubscriptionMessage subMsg(streamHash.c_str());
+    packet->AddHeader(subMsg);
+    packet->AddHeader(typeHead);
+    packet->AddHeader(lenHead);
+
+    m_sendQueue.push_back(packet);
+    m_sendQueuePieceMessageIndicators.push_back(false);
 
     HandleSend(m_peerSocket, m_peerSocket->GetTxAvailable());
 }
+
 void
 Peer::SendExtendedMessage(uint8_t messageId, const std::string& message)
 {
@@ -747,17 +771,17 @@ Peer::HandlePiece(Ptr<Packet> packet, uint32_t packetLength)
 
     return true; // i.e., there is more data left to receive until the block can be finished
 }
+
 bool
 Peer::HandleSegment(Ptr<Packet> packet, uint32_t packetLength)
 {
-    //YTODO How To Recv Msg
+    BitTorrentSubscriptionMessage subMsg;
+    packet->RemoveHeader(subMsg);
 
-    BitTorrentPieceMessage pieceMsg;
-    packet->RemoveHeader(pieceMsg);
-
-    uint32_t blockLength = packetLength - BT_PROTOCOL_MESSAGES_PIECE_LENGTH_MIN;
-    uint32_t blockPieceIndex = pieceMsg.GetIndex();
-    uint32_t blockBlockOffSet = pieceMsg.GetBegin();
+    uint32_t blockLength = packetLength - BT_STREAM_SUBSCRIBE_LENGTH - 1;
+    std::string streamHash = subMsg.GetStreamHash();
+    // uint32_t blockPieceIndex = pieceMsg.GetIndex();
+    // uint32_t blockBlockOffSet = pieceMsg.GetBegin();
 
     if (m_blockBufferSize < blockLength)
     {
@@ -777,27 +801,29 @@ Peer::HandleSegment(Ptr<Packet> packet, uint32_t packetLength)
     {
         if (m_myClient->GetCheckDownloadedData())
         {
-            if (std::memcmp(m_blockBuffer,
-                            m_myClient->GetTorrentDataBuffer() + blockPieceIndex * m_myClient->GetTorrent()->GetPieceLength() + blockBlockOffSet,
-                            blockLength) == 0)
-            {
-                m_pieceCorruptionMap[blockPieceIndex] = BT_PEER_PIECE_RECEPTION_CHECKSUM_OK;
-            }
-            else
-            {
-                m_pieceCorruptionMap[blockPieceIndex] = BT_PEER_PIECE_RECEPTION_CHECKSUM_NOT_OK;
-            }
+            // YTODO check stream mock data full zero
+            //  if (std::memcmp(m_blockBuffer,
+            //                  m_myClient->GetTorrentDataBuffer() + blockPieceIndex * m_myClient->GetTorrent()->GetPieceLength() + blockBlockOffSet,
+            //                  blockLength) == 0)
+            //  {
+            //      m_pieceCorruptionMap[blockPieceIndex] = BT_PEER_PIECE_RECEPTION_CHECKSUM_OK;
+            //  }
+            //  else
+            //  {
+            //      m_pieceCorruptionMap[blockPieceIndex] = BT_PEER_PIECE_RECEPTION_CHECKSUM_NOT_OK;
+            //  }
         }
 
         // Call the BlockCompletedEvent for this block (even if it was not downloaded correctly,
         // that case is also handled in the called method)
-        m_myClient->StreamBufferReady(streamhash);
+        m_myClient->StreamBufferReady(streamHash);
 
         return false; // i.e., there is no more data left to receive
     }
 
     return true; // i.e., there is more data left to receive until the block can be finished
 }
+
 void
 Peer::HandleRead(Ptr<Socket> socket)
 {
@@ -986,22 +1012,22 @@ Peer::HandleRead(Ptr<Socket> socket)
                     m_myClient->PeerExtensionMessageEvent(this, extMsg.GetMessageId(), extMsg.GetContent());
                     break;
                 }
-                case BitTorrentTypeHeader::SUBSCRIBE:{
+                case BitTorrentTypeHeader::SUBSCRIBE: {
                     BitTorrentSubscriptionMessage subMsg;
                     m_packetBuffer->RemoveHeader(subMsg);
                     HandleSubscrbe(socket, std::string(subMsg.GetStreamHash()));
                     break;
                 }
-                case BitTorrentTypeHeader::UNSUBSCRIBE:{
+                case BitTorrentTypeHeader::UNSUBSCRIBE: {
                     BitTorrentSubscriptionMessage subMsg;
                     m_packetBuffer->RemoveHeader(subMsg);
                     HandleUnSubscrbe(socket, std::string(subMsg.GetStreamHash()));
 
                     break;
                 }
-                case BitTorrentTypeHeader::SEGMENT:{
+                case BitTorrentTypeHeader::SEGMENT: {
                     HandleSegment(m_packetBuffer, m_lengthHeader.GetPacketLength());
-                    break;                    
+                    break;
                 }
                 default: {
                     m_packetBuffer->RemoveAtStart(m_lengthHeader.GetPacketLength());
@@ -1042,45 +1068,90 @@ Peer::HandleSend(Ptr<Socket> socket, uint32_t bytesFree)
 
         if (m_blockSendingActive)
         {
-            // Step 1: Calculate the actual amount of bytes that we still have to send
-            uint32_t bytesToSend = std::min(m_peerSocket->GetTxAvailable(), m_blockSendDataLeft);
-
-            // Step 2: Create a packet of the appropriate size containing the real data we have to
-            // send
-            Ptr<Packet> nextPart = Create<Packet>(m_blockSendPtr, bytesToSend);
-
-            // Step 3: Correct the data pointers so we read the correct data in a (possible) next
-            // iteration
-            m_blockSendPtr += bytesToSend;
-            m_blockSendDataLeft -= bytesToSend;
-
-            // Step 4: Send out the data
-            m_peerSocket->Send(nextPart);
-            m_totalBytesUploaded += bytesToSend;
-
-            /*
-             * Step 5: If we are about to finish serving a request, we inform the application of it,
-             * clean up and prevent other packets to be sent to prevent probable side effects (just
-             * in case)
-             */
-            if (m_blockSendDataLeft <= 0)
+            if (m_requestQueue.front().pieceIndex)
             {
-                NS_LOG_INFO("Peer: Finished upload of request " << m_requestQueue.front().pieceIndex << "@" << m_requestQueue.front().blockOffSet
-                                                                << "->" << m_requestQueue.front().blockOffSet + m_requestQueue.front().blockLength
-                                                                << " to " << GetRemoteIp()
-                                                                << "; free bytes left in tx buffer: " << m_peerSocket->GetTxAvailable()
-                                                                << "; requests left: " << m_requestQueue.size() - 1 << ".");
+                // Step 1: Calculate the actual amount of bytes that we still have to send
+                uint32_t bytesToSend = std::min(m_peerSocket->GetTxAvailable(), m_blockSendDataLeft);
 
-                m_blockSendingActive = false;
+                // Step 2: Create a packet of the appropriate size containing the real data we have to
+                // send, zero filled for this is a simulated packet
+                Ptr<Packet> nextPart = Create<Packet>(bytesToSend);
 
-                m_myClient->PeerBlockUploadCompleteEvent(this,
-                                                         m_requestQueue.front().pieceIndex,
-                                                         m_requestQueue.front().blockOffSet,
-                                                         m_requestQueue.front().blockLength);
+                // // Step 3: Correct the data pointers so we read the correct data in a (possible) next
+                // // iteration
+                // m_blockSendPtr += bytesToSend;
+                m_blockSendDataLeft -= bytesToSend;
 
-                m_sendQueuePieceMessageIndicators.pop_front();
-                m_sendQueue.pop_front();
-                m_requestQueue.pop_front();
+                // Step 4: Send out the data
+                m_peerSocket->Send(nextPart);
+                m_totalBytesUploaded += bytesToSend;
+
+                /*
+                 * Step 5: If we are about to finish serving a request, we inform the application of it,
+                 * clean up and prevent other packets to be sent to prevent probable side effects (just
+                 * in case)
+                 */
+                if (m_blockSendDataLeft <= 0)
+                {
+                    NS_LOG_INFO("Peer: Finished upload of request "
+                                << "Segment"
+                                << " to " << GetRemoteIp() << "; free bytes left in tx buffer: " << m_peerSocket->GetTxAvailable()
+                                << "; requests left: " << m_requestQueue.size() - 1 << ".");
+
+                    m_blockSendingActive = false;
+                    // No modulde call this e
+                    //  m_myClient->PeerBlockUploadCompleteEvent(this,
+                    //                                           m_requestQueue.front().pieceIndex,
+                    //                                           m_requestQueue.front().blockOffSet,
+                    //                                           m_requestQueue.front().blockLength);
+
+                    m_sendQueuePieceMessageIndicators.pop_front();
+                    m_sendQueue.pop_front();
+                    m_requestQueue.pop_front();
+                }
+            }
+            else
+            {
+                // Step 1: Calculate the actual amount of bytes that we still have to send
+                uint32_t bytesToSend = std::min(m_peerSocket->GetTxAvailable(), m_blockSendDataLeft);
+
+                // Step 2: Create a packet of the appropriate size containing the real data we have to
+                // send
+                Ptr<Packet> nextPart = Create<Packet>(m_blockSendPtr, bytesToSend);
+
+                // Step 3: Correct the data pointers so we read the correct data in a (possible) next
+                // iteration
+                m_blockSendPtr += bytesToSend;
+                m_blockSendDataLeft -= bytesToSend;
+
+                // Step 4: Send out the data
+                m_peerSocket->Send(nextPart);
+                m_totalBytesUploaded += bytesToSend;
+
+                /*
+                 * Step 5: If we are about to finish serving a request, we inform the application of it,
+                 * clean up and prevent other packets to be sent to prevent probable side effects (just
+                 * in case)
+                 */
+                if (m_blockSendDataLeft <= 0)
+                {
+                    NS_LOG_INFO("Peer: Finished upload of request " << m_requestQueue.front().pieceIndex << "@" << m_requestQueue.front().blockOffSet
+                                                                    << "->" << m_requestQueue.front().blockOffSet + m_requestQueue.front().blockLength
+                                                                    << " to " << GetRemoteIp()
+                                                                    << "; free bytes left in tx buffer: " << m_peerSocket->GetTxAvailable()
+                                                                    << "; requests left: " << m_requestQueue.size() - 1 << ".");
+
+                    m_blockSendingActive = false;
+
+                    m_myClient->PeerBlockUploadCompleteEvent(this,
+                                                             m_requestQueue.front().pieceIndex,
+                                                             m_requestQueue.front().blockOffSet,
+                                                             m_requestQueue.front().blockLength);
+
+                    m_sendQueuePieceMessageIndicators.pop_front();
+                    m_sendQueue.pop_front();
+                    m_requestQueue.pop_front();
+                }
             }
 
             nextIteration = true;
@@ -1090,43 +1161,84 @@ Peer::HandleSend(Ptr<Socket> socket, uint32_t bytesFree)
             if (m_sendQueuePieceMessageIndicators.front())
             {
                 NS_ASSERT(!m_requestQueue.empty());
-
-                if (m_peerSocket->GetTxAvailable() >= BT_PROTOCOL_MESSAGES_LENGTHHEADER_LENGTH + BT_PROTOCOL_MESSAGES_PIECE_LENGTH_MIN)
+                if (m_requestQueue.front().isSegment)
                 {
-                    // Step 1: Prepare the buffer that we will send our packet data from
-                    m_blockSendPtr = m_myClient->GetTorrentDataBuffer() +
-                                     m_requestQueue.front().pieceIndex * m_myClient->GetTorrent()->GetPieceLength() +
-                                     m_requestQueue.front().blockOffSet;
-                    m_blockSendDataLeft = m_requestQueue.front().blockLength;
+                    if (m_peerSocket->GetTxAvailable() >= BT_PROTOCOL_MESSAGES_LENGTHHEADER_LENGTH + BT_STREAM_SUBSCRIBE_LENGTH)
+                    {
+                        // Step 1: Prepare the buffer that we will send our packet data from
+                        // m_blockSendPtr = m_myClient->GetTorrentDataBuffer() +
+                        //                  m_requestQueue.front().pieceIndex * m_myClient->GetTorrent()->GetPieceLength() +
+                        //                  m_requestQueue.front().blockOffSet;
+                        m_blockSendDataLeft = m_requestQueue.front().blockLength;
 
-                    // Step 2: Create the prelude of the piece message
-                    Ptr<Packet> packet = Create<Packet>();
+                        // Step 2: Create the prelude of the piece message
+                        Ptr<Packet> packet = Create<Packet>();
 
-                    BitTorrentLengthHeader lenHead(BT_PROTOCOL_MESSAGES_PIECE_LENGTH_MIN + m_blockSendDataLeft);
-                    BitTorrentTypeHeader typeHead(BitTorrentTypeHeader::PIECE);
-                    BitTorrentPieceMessage pieceMsg(m_requestQueue.front().pieceIndex, m_requestQueue.front().blockOffSet);
+                        BitTorrentLengthHeader lenHead(1 + BT_STREAM_SUBSCRIBE_LENGTH + m_blockSendDataLeft);
+                        BitTorrentTypeHeader typeHead(BitTorrentTypeHeader::SEGMENT);
+                        BitTorrentSubscriptionMessage subMsg(m_requestQueue.front().streamHash.c_str());
+                        // BitTorrentPieceMessage pieceMsg(m_requestQueue.front().pieceIndex, m_requestQueue.front().blockOffSet);
 
-                    packet->AddHeader(pieceMsg);
-                    packet->AddHeader(typeHead);
-                    packet->AddHeader(lenHead);
+                        packet->AddHeader(subMsg);
+                        packet->AddHeader(typeHead);
+                        packet->AddHeader(lenHead);
 
-                    // Step 3: Initiate the sending of this packet
-                    m_blockSendingActive = true;
-                    m_totalBytesUploaded += m_blockSendDataLeft;
+                        // Step 3: Initiate the sending of this packet
+                        m_blockSendingActive = true;
+                        m_totalBytesUploaded += m_blockSendDataLeft;
 
-                    // Step 4: Send out the packet
-                    m_peerSocket->Send(packet);
+                        // Step 4: Send out the packet
+                        m_peerSocket->Send(packet);
 
-                    // Step 5: Start another iteration so the piece data can be appended directly
-                    nextIteration = true;
+                        // Step 5: Start another iteration so the piece data can be appended directly
+                        nextIteration = true;
 
-                    NS_LOG_INFO("Peer: Starting to upload to " << GetRemoteIp() << "; piece " << pieceMsg.GetIndex() << "@"
-                                                               << m_requestQueue.front().blockOffSet << "->"
-                                                               << m_requestQueue.front().blockOffSet + m_requestQueue.front().blockLength << ".");
+                        NS_LOG_INFO("Peer: Starting to upload to " << GetRemoteIp() << "; streamHash " << subMsg.GetStreamHash() << ".");
+                    }
+                    else
+                    {
+                        nextIteration = false;
+                    }
                 }
                 else
                 {
-                    nextIteration = false;
+                    if (m_peerSocket->GetTxAvailable() >= BT_PROTOCOL_MESSAGES_LENGTHHEADER_LENGTH + BT_PROTOCOL_MESSAGES_PIECE_LENGTH_MIN)
+                    {
+                        // Step 1: Prepare the buffer that we will send our packet data from
+                        m_blockSendPtr = m_myClient->GetTorrentDataBuffer() +
+                                         m_requestQueue.front().pieceIndex * m_myClient->GetTorrent()->GetPieceLength() +
+                                         m_requestQueue.front().blockOffSet;
+                        m_blockSendDataLeft = m_requestQueue.front().blockLength;
+
+                        // Step 2: Create the prelude of the piece message
+                        Ptr<Packet> packet = Create<Packet>();
+
+                        BitTorrentLengthHeader lenHead(BT_PROTOCOL_MESSAGES_PIECE_LENGTH_MIN + m_blockSendDataLeft);
+                        BitTorrentTypeHeader typeHead(BitTorrentTypeHeader::PIECE);
+                        BitTorrentPieceMessage pieceMsg(m_requestQueue.front().pieceIndex, m_requestQueue.front().blockOffSet);
+
+                        packet->AddHeader(pieceMsg);
+                        packet->AddHeader(typeHead);
+                        packet->AddHeader(lenHead);
+
+                        // Step 3: Initiate the sending of this packet
+                        m_blockSendingActive = true;
+                        m_totalBytesUploaded += m_blockSendDataLeft;
+
+                        // Step 4: Send out the packet
+                        m_peerSocket->Send(packet);
+
+                        // Step 5: Start another iteration so the piece data can be appended directly
+                        nextIteration = true;
+
+                        NS_LOG_INFO("Peer: Starting to upload to " << GetRemoteIp() << "; piece " << pieceMsg.GetIndex() << "@"
+                                                                   << m_requestQueue.front().blockOffSet << "->"
+                                                                   << m_requestQueue.front().blockOffSet + m_requestQueue.front().blockLength << ".");
+                    }
+                    else
+                    {
+                        nextIteration = false;
+                    }
                 }
             }
             else
@@ -1174,7 +1286,7 @@ Peer::HandleDataSent(Ptr<Socket> socket, uint32_t dataSent)
 }
 
 void
-Peer::HandleSubscrbe(Ptr<Socket> socket, const std::string &streamHash)
+Peer::HandleSubscrbe(Ptr<Socket> socket, const std::string& streamHash)
 {
     m_remoteHashInfo.insert(streamHash);
     m_myClient->SubscribeStream(this, streamHash);
@@ -1185,7 +1297,6 @@ Peer::HandleUnSubscrbe(Ptr<Socket> socket, const std::string& streamHash)
 {
     m_remoteHashInfo.erase(streamHash);
     m_myClient->UnSubscribeStream(this, streamHash);
-
 }
 
 void
