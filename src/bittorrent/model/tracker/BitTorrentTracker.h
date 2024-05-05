@@ -282,6 +282,13 @@ private:
   void SetClientToSeeder (BTDict& clientInfo);
   // The inverse of AddClient()
   void RemoveClient (const BTDict& clientInfo);
+
+  std::set<BTDoubleDict::const_iterator> GetSeeders(const std::string streamHash, int requireNum, std::string strategy);
+
+  std::set<BTDoubleDict::const_iterator> GetSeedersRandom(const std::string streamHash, int requireNum);
+  std::set<BTDoubleDict::const_iterator> GetSeedersTreeFirst(const std::string streamHash, int requireNum);
+  // std::set<BTDoubleDict::const_iterator> GetSeeders(const std::string streamHash, int requireNum);
+  
 };
 
 } // ns bittorrent

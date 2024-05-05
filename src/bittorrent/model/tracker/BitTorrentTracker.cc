@@ -395,13 +395,72 @@ BitTorrentTracker::GenerateResponseForPeer(const BTDict& clientInfo) const
         cloudInfoIt = m_cloudInfo.find(streamHash);
         if (clientInfo.find("event") == clientInfo.end() || (*(clientInfo.find("event"))).second.compare("scrape") != 0)
         {
-            // first announcement
-            if(clientInfo.find("PeerType")->second == BT_STREAM_PEERTYPE_CLIENT)
+            // announce (regular update)
+            std::string peer_id = (*(clientInfo.find("peer_id"))).second;
+
+            // Step 1: Tell the client about the current status of the swarm
+            result = "d";
+            result += "8:intervali" + m_updateInterval + "e";
+            result += "8:completei" + lexical_cast<std::string>((*cloudInfoIt).second.m_seeders.size()) + "e";
+            result +=
+                "10:incompletei" + lexical_cast<std::string>((*cloudInfoIt).second.m_clients.size() - (*cloudInfoIt).second.m_seeders.size()) + "e";
+            result += "10:tracker id" + lexical_cast<std::string>(peer_id.size()) + ":" + peer_id;
+
+            if (clientInfo.find("PeerType")->second == BT_STREAM_PEERTYPE_CLIENT)
             {
+                // client的最开始连接就需要返回
                 
             }
-        }
+            else if (clientInfo.find("PeerType")->second == BT_STREAM_PEERTYPE_PCDN)
+            {
+            }
+            else
+            {
+                // THIS is CDN
+            }
 
+            // Step 2: Get a random selection of peers and pass it to the client -->
+            result += "5:peersl";
+
+            std::set<uint32_t> indices =
+                Utilities::GetRandomSampleF2(lexical_cast<uint32_t>((*(clientInfo.find("numwant"))).second),
+                                             (*cloudInfoIt).second.m_clients.size()); // Gets random numbers from >>1<< to m_clients.size() => Be sure
+                                                                                      // to always subtract 1 when using these as indices!
+
+            BTDoubleDict::const_iterator clientsIt = (*cloudInfoIt).second.m_clients.begin();
+            uint32_t curPos = 0;
+            std::string curStr;
+            for (std::set<uint32_t>::const_iterator indexIt = indices.begin(); indexIt != indices.end(); ++indexIt)
+            {
+                while (curPos < (*indexIt) - 1)
+                {
+                    ++curPos;
+                    ++clientsIt;
+                }
+
+                BTDict curClient = (*clientsIt).second;
+                if ((*curClient.find("peer_id")).second != (*(clientInfo.find("peer_id"))).second)
+                {
+                    result += "d";
+                    curStr = (*curClient.find("peer_id")).second;
+                    result += "7:peer id" + lexical_cast<std::string>(curStr.size()) + ":" + curStr;
+                    curStr = (*curClient.find("ip")).second;
+                    result += "2:ip" + lexical_cast<std::string>(curStr.size()) + ":" + curStr;
+                    curStr = (*curClient.find("port")).second;
+                    result += "4:porti" + curStr + "e";
+                    result += "e";
+                }
+            }
+
+            result += "e"; // Client list
+            // <-- Step 2: Get a random selection of peers and pass it to the client
+
+            result += "e"; // Root dictionary
+        }
+        else
+        {
+            NS_LOG_WARN(this << "recv info without event keyword!");
+        }
     }
     else
     {
@@ -705,6 +764,37 @@ BitTorrentTracker::RemoveClient(const BTDict& clientInfo)
         (*cloudInfoIt).second.m_leftSeeders.insert(std::pair<std::string, BTDict>(peer_id, clientInfo));
         (*cloudInfoIt).second.m_seeders.erase(clientsIt);
     }
+}
+
+std::set<BTDoubleDict::const_iterator>
+BitTorrentTracker::GetSeeders(const std::string streamHash, int requireNum, std::string strategy)
+{
+    std::set<BTDoubleDict::const_iterator> result;
+    if (strategy == "random")
+    {
+        result = GetSeedersRandom(streamHash, requireNum);
+    }
+    else if (strategy == "treeFirst")
+    {
+        result = GetSeedersTreeFirst(streamHash, requireNum);
+
+    }
+    else
+    {
+    }
+    return result;
+}
+
+std::set<BTDoubleDict::const_iterator>
+BitTorrentTracker::GetSeedersRandom(const std::string streamHash, int requireNum)
+{
+    return std::set<BTDoubleDict::const_iterator>();
+}
+
+std::set<BTDoubleDict::const_iterator>
+ns3::bittorrent::BitTorrentTracker::GetSeedersTreeFirst(const std::string streamHash, int requireNum)
+{
+    return std::set<BTDoubleDict::const_iterator>();
 }
 
 } // namespace bittorrent
