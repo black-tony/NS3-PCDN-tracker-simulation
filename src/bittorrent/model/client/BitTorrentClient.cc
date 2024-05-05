@@ -701,7 +701,7 @@ BitTorrentClient::SubscribeStream(Ptr<Peer> peer, std::string streamHash)
     m_peerList[peer].insert(streamHash);
     if (m_subscriptionList.find(streamHash) == m_subscriptionList.end())
     {
-        if (m_clientType == "CDN")
+        if (m_clientType == BT_STREAM_PEERTYPE_CDN)
         {
             if (m_dataAvailableTimer.find(streamHash) != m_dataAvailableTimer.end())
             {
@@ -710,7 +710,7 @@ BitTorrentClient::SubscribeStream(Ptr<Peer> peer, std::string streamHash)
             m_dataAvailableTimer[streamHash] = Simulator::Schedule(Seconds(1), &BitTorrentClient::StreamBufferReady, this, streamHash);
             // YTODO : Timer is 1s, is this ok?
         }
-        else if (m_clientType == "PCDN")
+        else if (m_clientType == BT_STREAM_PEERTYPE_PCDN)
         {
             // YTODO currently we think no sub = no upperstream, but maybe we can hold or pre-create the upperstream
             NS_ASSERT(m_upperStreamList.find(streamHash) == m_upperStreamList.end());
@@ -746,7 +746,7 @@ BitTorrentClient::UnSubscribeStream(Ptr<Peer> peer, std::string streamHash)
     if (m_subscriptionList[streamHash].empty())
     {
         m_subscriptionList.erase(streamHash);
-        if (m_clientType == "CDN")
+        if (m_clientType == BT_STREAM_PEERTYPE_CDN)
         {
             if (m_dataAvailableTimer.find(streamHash) == m_dataAvailableTimer.end())
             {
@@ -755,7 +755,7 @@ BitTorrentClient::UnSubscribeStream(Ptr<Peer> peer, std::string streamHash)
             m_dataAvailableTimer[streamHash].Cancel();
             m_dataAvailableTimer.erase(streamHash);
         }
-        else if (m_clientType == "PCDN")
+        else if (m_clientType == BT_STREAM_PEERTYPE_PCDN)
         {
             // YTODO : unregister to CDN
         }
@@ -777,7 +777,7 @@ BitTorrentClient::RegisterUpperStream(Ptr<Peer> peer, std::string streamHash)
     m_peerList[peer].insert(streamHash);
     if (m_upperStreamList.find(streamHash) == m_upperStreamList.end())
     {
-        if (m_clientType == "CDN")
+        if (m_clientType == BT_STREAM_PEERTYPE_CDN)
         {
             NS_FATAL_ERROR("CDN DO NOT HAVE UPPER STREAM");
            
@@ -808,12 +808,12 @@ BitTorrentClient::UnRegisterUpperStream(Ptr<Peer> peer, std::string streamHash)
     if (m_upperStreamList[streamHash].empty())
     {
         m_upperStreamList.erase(streamHash);
-        if (m_clientType == "CDN")
+        if (m_clientType == BT_STREAM_PEERTYPE_CDN)
         {
             NS_FATAL_ERROR("CDN DONT HAVE UPPER STREAM");
             
         }
-        else if (m_clientType == "PCDN")
+        else if (m_clientType == BT_STREAM_PEERTYPE_PCDN)
         {
             //YTODO upper stream is empty, which case, should we unregister all downstreams?
         }

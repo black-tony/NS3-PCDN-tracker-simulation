@@ -85,6 +85,8 @@ PeerConnectorStrategyLive::ProcessPeriodicReannouncements()
     {
         std::map<std::string, std::string> additionalParameters;
         additionalParameters["PeerType"] = m_myClient->GetClientType();
+        additionalParameters["StreamHash"] = m_myClient->GetStreamHash();
+        additionalParameters["LiveStreaming"] = "1";
 
         // The last parameter in here is set to "false" so more important updates can override this one
         ContactTracker(PeerConnectorStrategyBase::REGULAR_UPDATE, 1, additionalParameters, false);
@@ -97,11 +99,12 @@ PeerConnectorStrategyLive::ProcessPeriodicReannouncements()
 void
 PeerConnectorStrategyLive::ConnectToCloud()
 {
-    //YTODO client connect to cloud with self hash to get seeders 
     NS_LOG_INFO("PeerConnectorStrategyLive: " << m_myClient->GetIp() << ": Contacting tracker to join cloud...");
 
     std::map<std::string, std::string> additionalParameters;
     additionalParameters["PeerType"] = m_myClient->GetClientType();
+    additionalParameters["StreamHash"] = m_myClient->GetStreamHash();
+    additionalParameters["LiveStreaming"] = "1";
     // num want should always be one
     ContactTracker(PeerConnectorStrategyBase::STARTED, 1, additionalParameters, true);
     m_myClient->SetConnectionToCloudSuspended(false);
@@ -115,6 +118,7 @@ PeerConnectorStrategyLive::GetSeeder(std::string streamHash)
 {
     std::map<std::string, std::string> additionalParameters;
     additionalParameters["PeerType"] = m_myClient->GetClientType();
+    additionalParameters["LiveStreaming"] = "1";
     additionalParameters["StreamHash"] = streamHash;
     ContactTracker(PeerConnectorStrategyBase::GET_SEEDER, 1, additionalParameters, true);
 }

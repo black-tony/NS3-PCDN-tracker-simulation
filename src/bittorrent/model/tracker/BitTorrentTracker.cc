@@ -360,6 +360,10 @@ BitTorrentTracker::DataCreater(std::string path, Ptr<Socket> socket, const Addre
             {
                 response = GenerateResponseForPeer(clientInfo);
             }
+            else if (eventType == "getseeder")
+            {
+                response = GenerateResponseForPeer(clientInfo);
+            }
             else
             {
                 NS_LOG_INFO("BitTorrentTracker: Registered unknown event from peer " << (*clientInfo.find("ip")).second << ": \"" << eventType
@@ -382,104 +386,123 @@ std::string
 BitTorrentTracker::GenerateResponseForPeer(const BTDict& clientInfo) const
 {
     std::string result;
-
-    std::string info_hash = (*(clientInfo.find("info_hash"))).second;
-    std::transform(info_hash.begin(), info_hash.end(), info_hash.begin(), toupper);
-
-    std::map<std::string, BitTorrentTrackerCloudInfo>::const_iterator cloudInfoIt;
-    cloudInfoIt = m_cloudInfo.find(info_hash);
-
-    // Generate an answer for an announce (first case) or a scrape request (second case)
-    if (clientInfo.find("event") == clientInfo.end() || (*(clientInfo.find("event"))).second.compare("scrape") != 0)
+    bool isLiveStreaming = clientInfo.find("LiveStreaming") != clientInfo.end();
+    if (isLiveStreaming)
     {
-        std::string peer_id = (*(clientInfo.find("peer_id"))).second;
-
-        // Step 1: Tell the client about the current status of the swarm
-        result = "d";
-        result += "8:intervali" + m_updateInterval + "e";
-        result += "8:completei" + lexical_cast<std::string>((*cloudInfoIt).second.m_seeders.size()) + "e";
-        result += "10:incompletei" + lexical_cast<std::string>((*cloudInfoIt).second.m_clients.size() - (*cloudInfoIt).second.m_seeders.size()) + "e";
-        result += "10:tracker id" + lexical_cast<std::string>(peer_id.size()) + ":" + peer_id;
-
-        // Step 2: Get a random selection of peers and pass it to the client -->
-        result += "5:peersl";
-
-        std::set<uint32_t> indices =
-            Utilities::GetRandomSampleF2(lexical_cast<uint32_t>((*(clientInfo.find("numwant"))).second),
-                                         (*cloudInfoIt).second.m_clients.size()); // Gets random numbers from >>1<< to m_clients.size() => Be sure to
-                                                                                  // always subtract 1 when using these as indices!
-
-        BTDoubleDict::const_iterator clientsIt = (*cloudInfoIt).second.m_clients.begin();
-        uint32_t curPos = 0;
-        std::string curStr;
-        for (std::set<uint32_t>::const_iterator indexIt = indices.begin(); indexIt != indices.end(); ++indexIt)
+        std::string streamHash = clientInfo.find("StreamHash")->second;
+        std::transform(streamHash.begin(), streamHash.end(), streamHash.begin(), toupper);
+        std::map<std::string, BitTorrentTrackerCloudInfo>::const_iterator cloudInfoIt;
+        cloudInfoIt = m_cloudInfo.find(streamHash);
+        if (clientInfo.find("event") == clientInfo.end() || (*(clientInfo.find("event"))).second.compare("scrape") != 0)
         {
-            while (curPos < (*indexIt) - 1)
+            // first announcement
+            if(clientInfo.find("PeerType")->second == BT_STREAM_PEERTYPE_CLIENT)
             {
-                ++curPos;
-                ++clientsIt;
+                
+            }
+        }
+
+    }
+    else
+    {
+        std::string info_hash = (*(clientInfo.find("info_hash"))).second;
+        std::transform(info_hash.begin(), info_hash.end(), info_hash.begin(), toupper);
+
+        std::map<std::string, BitTorrentTrackerCloudInfo>::const_iterator cloudInfoIt;
+        cloudInfoIt = m_cloudInfo.find(info_hash);
+
+        // Generate an answer for an announce (first case) or a scrape request (second case)
+        if (clientInfo.find("event") == clientInfo.end() || (*(clientInfo.find("event"))).second.compare("scrape") != 0)
+        {
+            std::string peer_id = (*(clientInfo.find("peer_id"))).second;
+
+            // Step 1: Tell the client about the current status of the swarm
+            result = "d";
+            result += "8:intervali" + m_updateInterval + "e";
+            result += "8:completei" + lexical_cast<std::string>((*cloudInfoIt).second.m_seeders.size()) + "e";
+            result +=
+                "10:incompletei" + lexical_cast<std::string>((*cloudInfoIt).second.m_clients.size() - (*cloudInfoIt).second.m_seeders.size()) + "e";
+            result += "10:tracker id" + lexical_cast<std::string>(peer_id.size()) + ":" + peer_id;
+
+            // Step 2: Get a random selection of peers and pass it to the client -->
+            result += "5:peersl";
+
+            std::set<uint32_t> indices =
+                Utilities::GetRandomSampleF2(lexical_cast<uint32_t>((*(clientInfo.find("numwant"))).second),
+                                             (*cloudInfoIt).second.m_clients.size()); // Gets random numbers from >>1<< to m_clients.size() => Be sure
+                                                                                      // to always subtract 1 when using these as indices!
+
+            BTDoubleDict::const_iterator clientsIt = (*cloudInfoIt).second.m_clients.begin();
+            uint32_t curPos = 0;
+            std::string curStr;
+            for (std::set<uint32_t>::const_iterator indexIt = indices.begin(); indexIt != indices.end(); ++indexIt)
+            {
+                while (curPos < (*indexIt) - 1)
+                {
+                    ++curPos;
+                    ++clientsIt;
+                }
+
+                BTDict curClient = (*clientsIt).second;
+                if ((*curClient.find("peer_id")).second != (*(clientInfo.find("peer_id"))).second)
+                {
+                    result += "d";
+                    curStr = (*curClient.find("peer_id")).second;
+                    result += "7:peer id" + lexical_cast<std::string>(curStr.size()) + ":" + curStr;
+                    curStr = (*curClient.find("ip")).second;
+                    result += "2:ip" + lexical_cast<std::string>(curStr.size()) + ":" + curStr;
+                    curStr = (*curClient.find("port")).second;
+                    result += "4:porti" + curStr + "e";
+                    result += "e";
+                }
             }
 
-            BTDict curClient = (*clientsIt).second;
-            if ((*curClient.find("peer_id")).second != (*(clientInfo.find("peer_id"))).second)
+            result += "e"; // Client list
+            // <-- Step 2: Get a random selection of peers and pass it to the client
+
+            result += "e"; // Root dictionary
+        }
+        else if ((*(clientInfo.find("event"))).second.compare("scrape") == 0) // Answer for a scrape
+        {
+            result += "d5:files";
+
+            if (cloudInfoIt != m_cloudInfo.end())
             {
+                // Step 1: Create a dictionary for the supplied info_hash with the hash converted into binary as the key
+                std::string binInfoHash;
+                char tmpVal;
+                for (size_t j = 0; j < info_hash.size(); j++)
+                {
+                    tmpVal = Utilities::GetValueOfHexChar(info_hash[j]) * 16;
+                    j++;
+                    tmpVal += Utilities::GetValueOfHexChar(info_hash[j]);
+                    binInfoHash.push_back(tmpVal);
+                }
+
+                result += "d20:";
+                result += binInfoHash;
                 result += "d";
-                curStr = (*curClient.find("peer_id")).second;
-                result += "7:peer id" + lexical_cast<std::string>(curStr.size()) + ":" + curStr;
-                curStr = (*curClient.find("ip")).second;
-                result += "2:ip" + lexical_cast<std::string>(curStr.size()) + ":" + curStr;
-                curStr = (*curClient.find("port")).second;
-                result += "4:porti" + curStr + "e";
+
+                // Step 2: Add other information to the dictionary
+                // Step 2a: "complete" (=number of seeders)
+                result += "8:completei";
+                result += lexical_cast<std::string>((*cloudInfoIt).second.m_seeders.size());
+                result += "e";
+                // Step 2b: "downloaded" (=number of complete events)
+                result += "10:downloadedi";
+                result += lexical_cast<std::string>((*cloudInfoIt).second.m_completed);
+                result += "e";
+                // Step 2c: "incomplete" (=number of leechers)
+                result += "10:incompletei";
+                result += lexical_cast<std::string>((*cloudInfoIt).second.m_clients.size() - (*cloudInfoIt).second.m_seeders.size());
+                result += "e";
+                result += "e";
                 result += "e";
             }
-        }
 
-        result += "e"; // Client list
-        // <-- Step 2: Get a random selection of peers and pass it to the client
-
-        result += "e"; // Root dictionary
-    }
-    else if ((*(clientInfo.find("event"))).second.compare("scrape") == 0) // Answer for a scrape
-    {
-        result += "d5:files";
-
-        if (cloudInfoIt != m_cloudInfo.end())
-        {
-            // Step 1: Create a dictionary for the supplied info_hash with the hash converted into binary as the key
-            std::string binInfoHash;
-            char tmpVal;
-            for (size_t j = 0; j < info_hash.size(); j++)
-            {
-                tmpVal = Utilities::GetValueOfHexChar(info_hash[j]) * 16;
-                j++;
-                tmpVal += Utilities::GetValueOfHexChar(info_hash[j]);
-                binInfoHash.push_back(tmpVal);
-            }
-
-            result += "d20:";
-            result += binInfoHash;
-            result += "d";
-
-            // Step 2: Add other information to the dictionary
-            // Step 2a: "complete" (=number of seeders)
-            result += "8:completei";
-            result += lexical_cast<std::string>((*cloudInfoIt).second.m_seeders.size());
-            result += "e";
-            // Step 2b: "downloaded" (=number of complete events)
-            result += "10:downloadedi";
-            result += lexical_cast<std::string>((*cloudInfoIt).second.m_completed);
-            result += "e";
-            // Step 2c: "incomplete" (=number of leechers)
-            result += "10:incompletei";
-            result += lexical_cast<std::string>((*cloudInfoIt).second.m_clients.size() - (*cloudInfoIt).second.m_seeders.size());
-            result += "e";
-            result += "e";
             result += "e";
         }
-
-        result += "e";
     }
-
     return result;
 }
 
