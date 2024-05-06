@@ -1337,7 +1337,7 @@ class BitTorrentClient : public Application
     // Callback setters
   public:
     // Cloud connection
-
+    void SetClientType(std::string clienttype);
     void SetCallbackConnectToCloud(Callback<void> eventCallback);
     void SetCallbackDisconnectFromCloud(Callback<void> eventCallback);
     void SetCallbackAnnounceAsSeeder(Callback<void> eventCallback);

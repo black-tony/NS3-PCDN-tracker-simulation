@@ -1257,6 +1257,12 @@ Story::ReadAndScheduleStory(std::string filePath, uint32_t simulationDuration)
                         NS_ABORT_MSG("[line " << currentLine << "] Error: Don't know how to set that for the video plaback.");
                     }
                 }
+                else if (buffer == "clienttype")
+                {
+                    lineBuffer >> buffer;
+                    CALL_FUNCTION(SetClientType, BitTorrentVideoClient, buffer)
+
+                }
                 else
                 {
                     NS_ABORT_MSG("[line " << currentLine << "] Error: Don't know how to set that for the client.");

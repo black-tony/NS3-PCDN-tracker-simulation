@@ -295,7 +295,7 @@ protected:
   virtual void ParseResponse (std::istream &response);
 
 // Internal callback methods
-protected:
+public:
   /**
    * \brief Event handler for the TCP socket of the connection server set up with the StartListening method.
    *

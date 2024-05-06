@@ -21,9 +21,9 @@
 #ifndef REQUESTSCHEDULINGSTRATEGYLIVE_H_
 #define REQUESTSCHEDULINGSTRATEGYLIVE_H_
 
-#include "AbstractStrategy.h"
-#include "BitTorrentPeer.h"
-#include "RequestSchedulingStrategyBase.h"
+#include "ns3/AbstractStrategy.h"
+#include "ns3/BitTorrentPeer.h"
+#include "ns3/RequestSchedulingStrategyBase.h"
 
 namespace ns3
 {

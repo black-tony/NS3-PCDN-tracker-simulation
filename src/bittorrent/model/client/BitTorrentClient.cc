@@ -323,10 +323,10 @@ BitTorrentClient::SetTorrent(Ptr<Torrent> torrent)
 void
 BitTorrentClient::SetProtocol(std::string protocol)
 {
-    if (m_protocol.empty())
-    {
+    // if (m_protocol.empty())
+    // {
         m_protocol = protocol;
-    }
+    // }
 }
 
 std::string
@@ -1744,6 +1744,12 @@ uint16_t
 BitTorrentClient::TriggerCallbackGetPeerCount()
 {
     return m_peerCount();
+}
+
+void
+BitTorrentClient::SetClientType(std::string clienttype)
+{
+    m_clientType = clienttype;
 }
 
 void

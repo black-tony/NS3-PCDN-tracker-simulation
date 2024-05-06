@@ -21,9 +21,9 @@
 #ifndef PEERCONNECTORSTRATEGY_LIVE_H_
 #define PEERCONNECTORSTRATEGY_LIVE_H_
 
-#include "AbstractStrategy.h"
-#include "BitTorrentHttpClient.h"
-#include "PeerConnectorStrategyBase.h"
+#include "ns3/AbstractStrategy.h"
+#include "ns3/BitTorrentHttpClient.h"
+#include "ns3/PeerConnectorStrategyBase.h"
 
 #include "ns3/address.h"
 #include "ns3/event-id.h"
@@ -61,6 +61,10 @@ class PeerConnectorStrategyLive : public PeerConnectorStrategyBase
 {
 private:
     std::set<std::pair<std::string, std::pair<uint32_t, uint16_t>>> m_potentialClients;
+    std::map<Ptr<Peer>, std::set<std::string>> m_PeerWithToRegisterHash;                    // IP addresses (in integer representation) of clients we are already connected to
+    std::map<uint32_t, Ptr<Peer>> m_connectedToPeers;                    // IP addresses (in integer representation) of clients we are already connected to
+    std::map<uint32_t, Ptr<Peer>> m_pendingConnectionToPeers;                    // IP addresses (in integer representation) of clients we are already connected to
+    // std::map<uint32_t, uint32_t> m_pendingConnectionsWithPeer;             // IP addresses of clients we are currently trying to establish a connection with
 public:
     PeerConnectorStrategyLive(Ptr<BitTorrentClient> myClient);
     ~PeerConnectorStrategyLive() override;
@@ -79,8 +83,17 @@ public:
    * @param response an istream object containing the response of the peer discovery mechanism.
    */
   void ParseResponse (std::istream &response) override;
-  public:
-    /**
+  void SubscribeAllStreams(Ptr<Peer> peer);
+  void ProcessConnectionCloseEvent(Ptr<Peer> peer) override;
+  void ProcessPeerConnectionEstablishedEvent(Ptr<Peer> peer) override;
+  void ProcessPeerConnectionFailEvent(Ptr<Peer> peer) override;
+  void AddConnection(uint32_t address) override;
+  void DeleteConnection(uint32_t address) override;
+
+  void CheckAndDisconnectIfRejected(Ptr<Peer> peer) override;
+
+public:
+  /**
    * \brief Get the list of clients that the client has so far discovered.
    *
    * @returns a list of <IP, port> pairs representing the clients so far discovered.

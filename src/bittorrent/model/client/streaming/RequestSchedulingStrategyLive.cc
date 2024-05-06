@@ -20,8 +20,8 @@
 
 #include "RequestSchedulingStrategyLive.h"
 
-#include "BitTorrentClient.h"
-#include "BitTorrentPeer.h"
+#include "ns3/BitTorrentClient.h"
+#include "ns3/BitTorrentPeer.h"
 
 #include "ns3/log.h"
 

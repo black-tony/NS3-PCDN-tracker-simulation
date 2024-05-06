@@ -20,7 +20,7 @@
 
 #include "BitTorrentPeer.h"
 
-#include "3rd-party/sha1.h"
+#include "../common/3rd-party/sha1.h"
 #include "BitTorrentClient.h"
 #include "BitTorrentPacket.h"
 #include "StorageManager.h"
@@ -460,6 +460,7 @@ Peer::SendSubscribe(std::string streamHash)
 
     m_sendQueue.push_back(packet);
     m_sendQueuePieceMessageIndicators.push_back(false);
+    m_myClient->RegisterUpperStream(this, streamHash);
     HandleSend(m_peerSocket, m_peerSocket->GetTxAvailable());
 }
 
@@ -482,6 +483,7 @@ Peer::SendUnSubscribe(std::string streamHash)
 
     m_sendQueue.push_back(packet);
     m_sendQueuePieceMessageIndicators.push_back(false);
+    m_myClient->UnRegisterUpperStream(this, streamHash);
 
     HandleSend(m_peerSocket, m_peerSocket->GetTxAvailable());
 }

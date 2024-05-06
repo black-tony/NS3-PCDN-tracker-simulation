@@ -233,9 +233,9 @@ void RarestFirstPartSelectionStrategy::ProcessStrategyOptionsChangedEvent ()
               else
                 {
                   uint16_t rarity = 0;
-                  for (std::vector<Ptr<Peer> >::const_iterator it = m_myClient->GetPeerListIterator (); it != m_myClient->GetPeerListEnd (); ++it)
+                  for (std::map<Ptr<Peer>, std::set<std::string>>::const_iterator it = m_myClient->GetPeerListIterator (); it != m_myClient->GetPeerListEnd (); ++it)
                     {
-                      if ((*it)->HasPiece (i))
+                      if ((*it).first->HasPiece (i))
                         {
                           ++rarity;
                         }

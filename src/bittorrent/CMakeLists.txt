@@ -47,6 +47,8 @@ build_lib(
                     model/client/RequestSchedulingStrategyBase.cc
                     model/client/StorageManager.cc
                     model/client/strategies/RarestFirstPartSelectionStrategy.cc
+                    model/client/streaming/PeerConnectorStrategyLive.cc
+                    model/client/streaming/RequestSchedulingStrategyLive.cc
                     #model/client/strategies/vod/bitos/BiToS-PartSelectionStrategy.cc
                     #model/client/strategies/vod/gtg/GTG-ChokeUnChokeStrategy.cc
                     #model/client/strategies/vod/gtg/GTG-PartSelectionStrategy.cc
@@ -79,6 +81,8 @@ build_lib(
                     model/client/RequestSchedulingStrategyBase.h       
                     model/client/StorageManager.h
                     model/client/strategies/RarestFirstPartSelectionStrategy.h
+                    model/client/streaming/PeerConnectorStrategyLive.h
+                    model/client/streaming/RequestSchedulingStrategyLive.h
                     #model/client/strategies/vod/bitos/BiToS-PartSelectionStrategy.h
                     #model/client/strategies/vod/gtg/GTG-ChokeUnChokeStrategy.h
                     #model/client/strategies/vod/gtg/GTG-PartSelectionStrategy.h

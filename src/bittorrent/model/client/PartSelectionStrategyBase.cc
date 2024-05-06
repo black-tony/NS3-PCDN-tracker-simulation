@@ -611,10 +611,10 @@ PartSelectionStrategyBase::ProcessCompletedPiece(uint32_t pieceIndex)
     m_myClient->SetPieceComplete(pieceIndex);
 
     // Step 2: Send out have messages to all associated clients
-    std::vector<Ptr<Peer>>::const_iterator it = m_myClient->GetPeerListIterator();
+    std::map<Ptr<Peer>, std::set<std::string>>::const_iterator it = m_myClient->GetPeerListIterator();
     for (; it != m_myClient->GetPeerListEnd(); ++it)
     {
-        (*it)->SendHaveMessage(pieceIndex);
+        (*it).first->SendHaveMessage(pieceIndex);
     }
 
     // Step 3: Check if the download is completed (possibly the most important function call in the
@@ -629,9 +629,9 @@ PartSelectionStrategyBase::CheckDownloadCompleted()
     {
         NS_LOG_INFO("WOHOOOO! " << m_myClient->GetNode()->GetId() << " (PeerID " << m_myClient->GetPeerId() << ") has completed download!");
 
-        for (std::vector<Ptr<Peer>>::const_iterator it = m_myClient->GetPeerListIterator(); it != m_myClient->GetPeerListEnd(); ++it)
+        for (std::map<Ptr<Peer>, std::set<std::string>>::const_iterator it = m_myClient->GetPeerListIterator(); it != m_myClient->GetPeerListEnd(); ++it)
         {
-            (*it)->SetAmInterested(false);
+            (*it).first->SetAmInterested(false);
         }
 
         m_myClient->DownloadCompleteEvent();
@@ -740,7 +740,7 @@ void
 PartSelectionStrategyBase::Scheduler()
 {
     // Step 1: Get the list of available peers
-    const std::vector<Ptr<Peer>>& peerlist = m_myClient->GetActivePeers();
+    const auto& peerlist = m_myClient->GetActivePeers();
 
     // Step 2: If we have already finished downloading or if we have no active peers, do nothing
     if (m_myClient->GetDownloadCompleted() || peerlist.size() == 0)
@@ -750,9 +750,15 @@ PartSelectionStrategyBase::Scheduler()
 
     // Step 3: Randomly iterate through the list of peers and assign requests to them if applicable
     std::list<uint32_t> requestOrder = GetPeerOrderForScheduler();
+    auto itat = peerlist.begin();
     for (std::list<uint32_t>::const_iterator it = requestOrder.begin(); it != requestOrder.end(); ++it)
     {
-        Ptr<Peer> currentPeer = peerlist[(*it) - 1];
+        itat = peerlist.begin();
+        for (uint32_t i = 0; i < *it; i++)
+        {
+            itat++;
+        }
+        Ptr<Peer> currentPeer = itat->first;
         RequestedBlocksMap::iterator rbmIt = m_requestedBlocks.find(currentPeer);
         if (rbmIt == m_requestedBlocks.end()) // In case one of our data structures went off the line,
         {

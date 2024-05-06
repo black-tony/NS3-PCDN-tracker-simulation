@@ -70,15 +70,15 @@ ProtocolFactory::CreateStrategyBundle(std::string protocolName,
     {
         CreateGiveToGetProtocol(client, strategyStore, aPeerConnectorStrategy);
     }
-    else if (protocolName == "live streaming client")
+    else if (protocolName == "live-streaming-client")
     {
         CreateLiveStreamingClientProtocol(client, strategyStore, aPeerConnectorStrategy);
     }
-    else if (protocolName == "live streaming box")
+    else if (protocolName == "live-streaming-box")
     {
         CreateLiveStreamingBoxProtocol(client, strategyStore, aPeerConnectorStrategy);
     }
-    else if (protocolName == "live streaming server")
+    else if (protocolName == "live-streaming-server")
     {
         CreateLiveStreamingServerProtocol(client, strategyStore, aPeerConnectorStrategy);
     }

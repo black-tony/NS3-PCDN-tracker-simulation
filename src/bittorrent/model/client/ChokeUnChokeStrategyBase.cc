@@ -558,10 +558,10 @@ ChokeUnChokeStrategyBase::ProcessGatherMetricsEvent()
     std::map<std::string, std::string> result;
 
     double uploadSpeed = 0, downloadSpeed = 0;
-    for (std::vector<Ptr<Peer>>::const_iterator it = m_myClient->GetPeerListIterator(); it != m_myClient->GetPeerListEnd(); ++it)
+    for (std::map<Ptr<Peer>, std::set<std::string>>::const_iterator it = m_myClient->GetPeerListIterator(); it != m_myClient->GetPeerListEnd(); ++it)
     {
-        uploadSpeed += (*it)->GetBpsUpload();
-        downloadSpeed += (*it)->GetBpsDownload();
+        uploadSpeed += (*it).first->GetBpsUpload();
+        downloadSpeed += (*it).first->GetBpsDownload();
     }
 
     result["upload-speed"] = lexical_cast<std::string>(uploadSpeed) + "bps";
