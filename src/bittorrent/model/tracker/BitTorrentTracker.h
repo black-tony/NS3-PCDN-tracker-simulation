@@ -275,6 +275,10 @@ class BitTorrentTracker : public Application
      * @returns the request in a STL dictionary of type std::map<std::string, std::string> (BTDict).
      */
     static BTDict ExtractInfoFromClientMessage(std::string path);
+    
+    void AddStreamHash(std::string streamHash);
+
+    void RemoveStreamHash(std::string streamHash);
 
     // Internal methods
   private:
@@ -283,9 +287,6 @@ class BitTorrentTracker : public Application
     // The inverse of AddInfoHash. A torrent without a registered info_hash will be ignored
     void RemoveInfoHash(std::string info_hash);
 
-    void AddStreamHash(std::string streamHash);
-
-    void RemoveStreamHash(std::string streamHash);
 
     bool IsStreamInfo(const BTDict& clientInfo) const;
 

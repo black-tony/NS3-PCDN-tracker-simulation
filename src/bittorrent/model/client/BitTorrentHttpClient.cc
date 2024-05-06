@@ -73,8 +73,8 @@ bool BitTorrentHttpClient::HttpGetRequest (Ptr<Node> node, TypeId typeidvar, Ipv
   m_socket = Socket::CreateSocket (node, typeidvar);
   m_socket->Bind ();
   m_socket->SetRecvCallback (ReplyHandler);
-  int ans = m_socket->Connect (InetSocketAddress (addr, port));
-  std::cout <<"send message length = " << ans << " " << m_socket->GetErrno() <<  std::endl;
+  m_socket->Connect (InetSocketAddress (addr, port));
+  // std::cout <<"send message length = " << ans << " " << m_socket->GetErrno() <<  std::endl;
 
   // Step 3: Send out the request
   std::ostringstream request;

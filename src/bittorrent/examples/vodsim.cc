@@ -36,6 +36,7 @@
 #include "ns3/simulator.h"
 #include "ns3/node.h"
 #include "ns3/node-container.h"
+#include "ns3/nix-vector-helper.h"
 
 #ifdef NS3_MPI
 #include <mpi.h>
@@ -59,8 +60,11 @@ int main (int argc, char *argv[])
     
   LogComponentEnable ("bittorrent::Peer", LOG_LEVEL_ALL);
   LogComponentEnable ("BitTorrentTracker", LOG_LEVEL_INFO);
+  // LogComponentEnable ("TcpSocketBase", LOG_LEVEL_ALL);
+  
   // LogComponentEnable ("bittorrent::PartSelectionStrategyBase", LOG_LEVEL_ALL);
-  // LogComponentEnable ("bittorrent::PeerConnectorStrategyBase", LOG_LEVEL_ALL);
+  LogComponentEnable ("bittorrent::PeerConnectorStrategyBase", LOG_LEVEL_ALL);
+  LogComponentEnable ("bittorrent::PeerConnectorStrategyLive", LOG_LEVEL_ALL);
   LogComponentEnable ("bittorrent::VODSimBriteTopologyHelper", LOG_LEVEL_ALL);
 
 #ifdef NS3_MPI
@@ -127,6 +131,7 @@ int main (int argc, char *argv[])
   std::cout << "Configuring tracker for network topology..." << std::endl;
 
   BitTorrentTracker* btTracker = dynamic_cast<BitTorrentTracker*> (PeekPointer (btTrackerNode.Get (0)->GetApplication (0)));
+  btTracker->AddStreamHash(BT_STREAM_DEFAULT_HASH);
   Ptr<Torrent> sharedTorrent = btTracker->AddTorrent (story->GetTorrentFolder (), story->GetTorrentFile ());
   btTracker->PrepareForManyClients (sharedTorrent, story->GetBTNodeCount () + 1);
   std::cout << "	Tracker announce URL: "<< btTracker->GetAnnounceURL () << std::endl;
@@ -159,7 +164,9 @@ int main (int argc, char *argv[])
 #endif
 
   // topologyHelper.WriteLastTopologyToGraphVizFile (story->GetSimulationId () + ".dot");
-
+  Ptr<OutputStreamWrapper> routingStream =
+            Create<OutputStreamWrapper>("nix-simple-ipv4.routes", std::ios::out);
+  Ipv4NixVectorHelper::PrintRoutingTableAllAt(Seconds(8), routingStream);
   std::cout << "Starting BitTorrent Video-on-Demand simulation..." << std::endl;
   Simulator::ScheduleNow (ShowTimePeriodic);
   Simulator::Stop (Seconds (simulationDuration) + MilliSeconds (1));

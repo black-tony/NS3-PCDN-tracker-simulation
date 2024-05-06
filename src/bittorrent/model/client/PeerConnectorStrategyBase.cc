@@ -575,7 +575,7 @@ PeerConnectorStrategyBase::ParseResponse(std::istream& response)
             return;
         }
         // NS_ASSERT(peerList);
-
+        NS_LOG_INFO("we recv peer list len" << (peerList->GetIterator() == peerList->GetListEnd() ? "0" : ">0"));
         std::pair<uint32_t, uint16_t> peer;
         for (std::list<Ptr<TorrentData>>::const_iterator iter = peerList->GetIterator(); iter != peerList->GetListEnd(); ++iter)
         {
