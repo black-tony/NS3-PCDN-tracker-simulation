@@ -66,6 +66,8 @@ PeerConnectorStrategyBase::PeerConnectorStrategyBase(Ptr<BitTorrentClient> myCli
 
 PeerConnectorStrategyBase::~PeerConnectorStrategyBase()
 {
+    if(!m_nextPeriodicEvent.IsExpired())
+        m_nextPeriodicEvent.Cancel();
 }
 
 void

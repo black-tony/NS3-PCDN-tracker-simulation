@@ -11,11 +11,15 @@
 0h0m0s: topology set delays min 0 max 0
 //
 //
+0h0m0s: topology add clients count 1 type point-to-point uplink 448kbps downlink 2048kbps delay 0ms
+0h0m0s: all clients join group CDN
 0h0m0s: topology add clients count 2 type point-to-point uplink 448kbps downlink 2048kbps delay 0ms
 0h0m0s: all clients join group PCDN
+0h0m0s: group CDN leave group PCDN
 0h0m0s: topology add clients count 4 type point-to-point uplink 448kbps downlink 2048kbps delay 0ms
 0h0m0s: all clients join group leechers
 0h0m0s: group PCDN leave group leechers
+0h0m0s: group CDN leave group leechers
 //
 //
 0h0m0s: group PCDN set initial bitfield full
@@ -35,6 +39,9 @@
 //
 //
 0h0m0s: group PCDN set unchoked peers 3
+0h0m0s: group CDN set clienttype CDN
+0h0m0s: group PCDN set clienttype PCDN
+0h0m0s: group leechers set clienttype CLIENT
 //
 //
 0h0m0s: all clients set strategy live-streaming-box
@@ -48,7 +55,9 @@
 //
 //
 0h0m0s: tracker set update interval 0h0m60s
+0h0m0s: tracker set strategy random
 //
 //
 0h0m0s: group PCDN init
+0h0m0s: group CDN init
 0h0m5s: group leechers init

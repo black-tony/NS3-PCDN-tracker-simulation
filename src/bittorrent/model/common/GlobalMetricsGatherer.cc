@@ -231,6 +231,7 @@ void GlobalMetricsGatherer::AnnounceFinishedExternalClient ()
 
 void GlobalMetricsGatherer::UpdateHealthIndexAppStart (Ptr<BitTorrentClient> client)
 {
+  return;
   const std::vector<uint8_t> clientBitfield = *(client->GetBitfield ());
 
   for (uint32_t current = 0; current < client->GetTorrent ()->GetBitfieldSize (); ++current)

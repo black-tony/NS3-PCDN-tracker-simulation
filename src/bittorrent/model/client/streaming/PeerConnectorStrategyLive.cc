@@ -516,6 +516,8 @@ PeerConnectorStrategyLive::DoInitialize()
     m_myClient->RegisterCallbackGetSeederEvent(MakeCallback(&PeerConnectorStrategyLive::GetSeeder, this));
     // this covered the parent class's connectToPeers function
     m_myClient->SetCallbackConnectToPeers(MakeCallback(&PeerConnectorStrategyLive::ConnectToPeers, this));
+    m_myClient->SetCallbackConnectToCloud(MakeCallback(&PeerConnectorStrategyLive::ConnectToCloud, this));
+
     // this covered the parent class's process periodic schedule function
     m_nextPeriodicEvent.Cancel();
     m_nextPeriodicEvent = Simulator::Schedule(m_periodicInterval, &PeerConnectorStrategyLive::ProcessPeriodicSchedule, this);

@@ -294,6 +294,7 @@ BitTorrentClient::StartApplication()
     GlobalMetricsGatherer::GetInstance()->WriteToFile(
         "active-clients",
         GetPeerId() + " on node " + lexical_cast<std::string>(GetNode()->GetId())
+        + " peer type " + m_clientType
 #ifdef NS3_MPI
             + " (MPI system ID " + lexical_cast<std::string>(GetNode()->GetSystemId()) + " )"
 #endif

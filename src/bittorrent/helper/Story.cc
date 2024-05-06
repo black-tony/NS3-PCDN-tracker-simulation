@@ -724,11 +724,19 @@ Story::ReadAndScheduleStory(std::string filePath, uint32_t simulationDuration)
             {
                 if (client)
                 {
-                    SCHEDULE_CHAPTER_NOARGS(&BitTorrentVideoClient::StartApplication, BitTorrentVideoClient)
+                    for (NodeContainer::Iterator it = affectedNodes.Begin(); it != affectedNodes.End(); ++it)
+                    {
+                        dynamic_cast<BitTorrentVideoClient*>(PeekPointer((*it)->GetApplication(0)))->SetStartTime(time);
+                    }
+                    // SCHEDULE_CHAPTER_NOARGS(&BitTorrentVideoClient::StartApplication, BitTorrentVideoClient)
                 }
                 else
                 {
-                    SCHEDULE_CHAPTER_NOARGS(&BitTorrentTracker::StartApplication, BitTorrentTracker)
+                    for (NodeContainer::Iterator it = affectedNodes.Begin(); it != affectedNodes.End(); ++it)
+                    {
+                        dynamic_cast<BitTorrentTracker*>(PeekPointer((*it)->GetApplication(0)))->SetStartTime(time);
+                    }
+                    // SCHEDULE_CHAPTER_NOARGS(&BitTorrentTracker::StartApplication, BitTorrentTracker)
                 }
                 std::cout << "		Scheduled init." << std::endl;
             }
@@ -1507,6 +1515,11 @@ Story::ReadAndScheduleStory(std::string filePath, uint32_t simulationDuration)
                     {
                         NS_ABORT_MSG("[line " << currentLine << "] Error: Missing \"interval\" after \"update\".");
                     }
+                }
+                else if(buffer == "strategy")
+                {
+                    lineBuffer >> buffer;
+                    SCHEDULE_CHAPTER(&BitTorrentTracker::SetSeederStrategy, BitTorrentTracker, buffer);
                 }
                 else
                 {

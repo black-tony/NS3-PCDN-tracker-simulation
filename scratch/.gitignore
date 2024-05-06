@@ -6,3 +6,5 @@
 !subdir/
 !scratch-simulator.cc
 !CMakeLists.txt
+*.dot
+*.png

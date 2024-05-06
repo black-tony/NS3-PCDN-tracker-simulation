@@ -158,7 +158,7 @@ class BitTorrentTracker : public Application
      * @param scrapePath The scrape path to use.
      */
     void SetScrapePath(std::string scrapePath);
-
+    void SetSeederStrategy(std::string strategy);
     // Retrieves the full announce path, including IP address and port number
     /**
      * @returns the fully-qualified announce URL to use in a request to the tracker, including the tracker's IP and listening port.

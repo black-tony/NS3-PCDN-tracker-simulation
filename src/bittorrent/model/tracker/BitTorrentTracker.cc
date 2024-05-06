@@ -55,7 +55,7 @@ BitTorrentTracker::BitTorrentTracker()
     m_announcePath = "/announce";
     m_scrapePath = "/scrape";
     m_updateInterval = "60";
-
+    m_getSeederStrategy = "random";
     m_handleStartListening = MakeCallback(&BitTorrentHttpServer::StartListening, &HttpCS);
     m_handleStopListening = MakeCallback(&BitTorrentHttpServer::StopListening, &HttpCS);
     m_handleConnectionCreation = MakeCallback(&BitTorrentTracker::ConnectionCreation, this);
@@ -82,6 +82,7 @@ void
 BitTorrentTracker::StartApplication()
 {
     // Start the BitTorrentHttpServer component
+    // NS_LOG_INFO("TRACKER START APP");
     m_handleStartListening(GetNode(), TcpSocketFactory::GetTypeId(), m_handleConnectionCreation);
 }
 
@@ -120,6 +121,12 @@ void
 BitTorrentTracker::SetScrapePath(std::string scrapePath)
 {
     m_scrapePath = scrapePath;
+}
+
+void
+BitTorrentTracker::SetSeederStrategy(std::string strategy)
+{
+    m_getSeederStrategy = strategy;
 }
 
 std::string
@@ -234,6 +241,7 @@ void
 BitTorrentTracker::DataCreater(std::string path, Ptr<Socket> socket, const Address& fromAddress)
 {
     // Only act if announce/scrape URL was correctly submitted
+    NS_LOG_INFO("We recv datacenter called");
     if ((path.find(GetAnnouncePath() + '?') != 0) && (path.find(GetScrapePath() + '?') != 0))
     {
         NS_LOG_WARN("BitTorrentTracker: Could not find announce or scrape path in GET URL received from client.");
@@ -751,6 +759,8 @@ BitTorrentTracker::AddClient(BTDict& clientInfo)
         std::string peer_id = (*(clientInfo.find("peer_id"))).second;
         std::map<std::string, BitTorrentTrackerCloudInfo>::iterator cloudInfoIt;
         std::string peer_type = clientInfo.find("PeerType")->second;
+        NS_LOG_INFO("We find a streaming client " << peer_id << " type " << peer_type << " with Hash " << streamHash);
+
         if(peer_type == BT_STREAM_PEERTYPE_CDN)
         {
             m_CDNInfo[peer_id] = clientInfo;
@@ -961,6 +971,7 @@ BitTorrentTracker::GetSeeders(const std::string streamHash, int requireNum, std:
 std::set<BTDoubleDict::const_iterator>
 BitTorrentTracker::GetSeedersRandom(const std::string streamHash, int requireNum) const
 {
+    NS_LOG_INFO("Random get seeder called");
     return std::set<BTDoubleDict::const_iterator>();
 }
 
