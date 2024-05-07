@@ -326,6 +326,7 @@ public:
   virtual void CheckAndDisconnectIfRejected (Ptr<Peer> peer);
 
 // Tracker contact functionality
+// public:
 protected:
   /**
    * \brief Listen for responses from the HTTP-based tracker and starts processesing them once they have fully arrived.

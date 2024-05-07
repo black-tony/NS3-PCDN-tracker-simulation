@@ -133,7 +133,7 @@ PeerConnectorStrategyLive::ConnectToPeers(uint16_t count)
 
     // Step 1: Get the clients that we MAY connect to
     const auto& potentialPeers = GetPotentialClients();
-    if (potentialPeers.size() == 0) // No one we could connect to
+    if (potentialPeers.empty()) // No one we could connect to
     {
         return 0;
     }
@@ -203,7 +203,9 @@ PeerConnectorStrategyLive::ConnectToPeers(uint16_t count)
         else if (m_connectedTo.find((*iter).second.first) != m_connectedTo.end())
         {
             if (m_PeerWithToRegisterHash.find(m_connectedToPeers[(*iter).second.first]) == m_PeerWithToRegisterHash.end())
+            {
                 m_PeerWithToRegisterHash[m_connectedToPeers[(*iter).second.first]] = std::set<std::string>();
+            }
             m_PeerWithToRegisterHash[m_connectedToPeers[(*iter).second.first]].insert(iter->first);
             Simulator::ScheduleNow(&PeerConnectorStrategyLive::SubscribeAllStreams, this, m_connectedToPeers[(*iter).second.first]);
         }
@@ -225,7 +227,7 @@ PeerConnectorStrategyLive::ParseResponse(std::istream& response)
         return;
     }
 
-    // NS_LOG_DEBUG ("Parsing tracker response \"" << dynamic_cast<std::stringstream&> (response).str () << "\"." << std::endl);
+    NS_LOG_DEBUG ("Parsing tracker response \"" << dynamic_cast<std::stringstream&> (response).str () << "\"." << std::endl);
 
     Ptr<TorrentData> root = TorrentData::ReadBencodedData(response);
     Ptr<TorrentDataDictonary> rootDict = DynamicCast<TorrentDataDictonary>(root);
@@ -400,13 +402,15 @@ PeerConnectorStrategyLive::ParseResponse(std::istream& response)
             std::stringstream outputIpStream;
             buf.Print(outputIpStream);
             std::string outputIpString = outputIpStream.str();
-            NS_LOG_INFO(this << " client type " << m_myClient->GetClientType() << " recv a peer streamHash=" << peerStreamHash->GetData()
+            NS_LOG_INFO("PeerConnectorStrategyLive: client" << m_myClient->GetSelfRepresent() << " recv a peer streamHash=" << peerStreamHash->GetData()
                              << " address = " << outputIpString);
         }
     }
 
     if (!m_myClient->GetConnectedToCloud())
+    {
         m_myClient->CloudConnectionEstablishedEvent();
+    }
 
     m_myClient->SetConnectedToCloud(true);
 }
@@ -422,10 +426,13 @@ PeerConnectorStrategyLive::SubscribeAllStreams(Ptr<Peer> peer)
     for (auto streamhashIt = subIt->second.begin(); streamhashIt != subIt->second.end(); streamhashIt++)
     {
         peer->SendSubscribe(*streamhashIt);
-        NS_LOG_INFO(this << "(" << m_myClient->GetIp() << ", " << m_myClient->GetClientType() << ")"
+        NS_LOG_INFO("PeerConnectorStrategyLive: client" << m_myClient->GetSelfRepresent()
                          << " send subscribe hash " << *streamhashIt << " to " << peer->GetRemoteIp());
+        m_potentialClients.erase(std::make_pair(*streamhashIt, std::make_pair(peer->GetRemoteIp().Get(), peer->GetRemotePort())) );
+
     }
     m_PeerWithToRegisterHash.erase(subIt);
+
 }
 
 void
@@ -455,7 +462,6 @@ PeerConnectorStrategyLive::ProcessPeerConnectionEstablishedEvent(Ptr<Peer> peer)
     m_pendingConnections.erase(peer->GetRemoteIp().Get());
     m_pendingConnectionToPeers.erase(peer->GetRemoteIp().Get());
     Simulator::ScheduleNow(&PeerConnectorStrategyLive::SubscribeAllStreams, this, peer);
-
     // peer->SendBitfield();
 }
 
@@ -464,7 +470,14 @@ PeerConnectorStrategyLive::ProcessPeerConnectionFailEvent(Ptr<Peer> peer)
 {
     m_pendingConnections.erase(peer->GetRemoteIp().Get());
     m_pendingConnectionToPeers.erase(peer->GetRemoteIp().Get());
-
+    if(m_disconnectEvent.find(peer) != m_disconnectEvent.end())
+    {
+        if(!m_disconnectEvent[peer].IsExpired())
+        {
+            m_disconnectEvent[peer].Cancel();
+        }
+        m_disconnectEvent.erase(peer);
+    }
     if (!m_myClient->GetDownloadCompleted())
     {
         Simulator::ScheduleNow(&PeerConnectorStrategyLive::ProcessPeriodicSchedule, this);
@@ -490,7 +503,9 @@ PeerConnectorStrategyLive::DeleteConnection(uint32_t address)
     {
         auto subIt = m_PeerWithToRegisterHash.find(Pit->second);
         if (subIt != m_PeerWithToRegisterHash.end())
+        {
             m_PeerWithToRegisterHash.erase(subIt);
+        }
         m_connectedToPeers.erase(Pit);
     }
 }
@@ -538,6 +553,7 @@ PeerConnectorStrategyLive::DoInitialize()
     // this covered the parent class's connectToPeers function
     m_myClient->SetCallbackConnectToPeers(MakeCallback(&PeerConnectorStrategyLive::ConnectToPeers, this));
     m_myClient->SetCallbackConnectToCloud(MakeCallback(&PeerConnectorStrategyLive::ConnectToCloud, this));
+    m_myClient->SetCallbackDisconnectFromCloud(MakeCallback(&PeerConnectorStrategyLive::DisconnectFromCloud, this));
 
     // this covered the parent class's process periodic schedule function
     m_nextPeriodicEvent.Cancel();
@@ -566,11 +582,158 @@ PeerConnectorStrategyLive::NewConnectionCreatedCallback(Ptr<Socket> sock, const 
     Ptr<Peer> newPeer = CreateObject<Peer>(m_myClient);
     Simulator::ScheduleNow(&Peer::ServeNewPeer, newPeer, sock, buf.GetIpv4(), buf.GetPort());
     m_disconnectEvent[newPeer] = Simulator::Schedule(MilliSeconds(BT_PEER_CONNECTOR_CONNECTION_ACCEPTANCE_DELAY),
-                        &PeerConnectorStrategyBase::CheckAndDisconnectIfRejected,
+                        &PeerConnectorStrategyLive::CheckAndDisconnectIfRejected,
                         this,
                         newPeer);
 }
+void
+PeerConnectorStrategyLive::DisconnectFromCloud()
+{
+    NS_LOG_INFO("PeerConnectorStrategyLive: " << m_myClient->GetIp() << ":  Disconnecting all peers and leaving cloud.");
 
+    DisconnectPeers(-1);
+
+    std::map<std::string, std::string> additionalParameters;
+    additionalParameters["PeerType"] = m_myClient->GetClientType();
+    additionalParameters["StreamHash"] = m_myClient->GetStreamHash();
+    additionalParameters["LiveStreaming"] = "1";
+    ContactTracker(PeerConnectorStrategyBase::STOPPED, 0, additionalParameters, true);
+
+    m_myClient->SetConnectedToCloud(false);
+    m_myClient->SetConnectionToCloudSuspended(true);
+    if(!m_nextPeriodicReannouncement.IsExpired())
+    {
+        m_nextPeriodicReannouncement.Cancel();
+    }
+    // m_myClient->CloudConnectionSuspendedEvent();
+}
+// void
+// PeerConnectorStrategyLive::TrackerResponseEvent(Ptr<Socket> socket)
+// {
+//     size_t responseStart;
+//     bool finished = false;
+
+//     // Step 1: Read the response from the HTTP client
+//     m_trackerBuffer << m_httpCC.HttpReceiveReply(socket, true, true, responseStart, finished);
+
+//     // Step 2a: If the response was fully received, parse it and announce that we received a tracker response
+//     if (finished)
+//     {
+//         ParseResponse(m_trackerBuffer);
+
+//         m_httpCC.CloseAndReInit();
+//         m_trackerBuffer.clear();
+//         Simulator::Cancel(m_timeoutEvent);
+
+//         m_myClient->TrackerResponseReceivedEvent();
+//     }
+//     else
+//     {
+//         // Step 2b1: If the response had a bad/error header, we forget about the response
+//         if (m_httpCC.HasBadHeader())
+//         {
+//             m_httpCC.CloseAndReInit();
+//             m_trackerBuffer.clear();
+//             Simulator::Cancel(m_timeoutEvent);
+
+//             NS_LOG_INFO("PeerConnectorStrategyLive: " << m_myClient->GetIp() << ":  Received error header from tracker.");
+//         }
+
+//         // Step 2b2: If the request has not yet been fully answered, we check back in 500ms again
+//         if (m_httpCC.GetRequestActive())
+//         {
+//             Simulator::Schedule(MilliSeconds(500), &PeerConnectorStrategyLive::TrackerResponseEvent, this, socket);
+//         }
+//     }
+// }
+// bool
+// PeerConnectorStrategyLive::ContactTracker(TrackerContactReason event,
+//                                           uint16_t numwant,
+//                                           std::map<std::string, std::string> additionalParameters,
+//                                           bool closeCurrentConnection)
+// {
+//     // Step 1: Initiate a connection with the tracker, close existing ones if required
+//     if (closeCurrentConnection)
+//     {
+//         m_httpCC.CloseAndReInit();
+//     }
+//     else
+//     {
+//         if (m_httpCC.HasBadHeader())
+//         {
+//             NS_LOG_INFO("PeerConnectorStrategyLive: " << m_myClient->GetIp() << ":  Received bad header from tracker.");
+
+//             return false;
+//         }
+//         else if (m_httpCC.GetRequestActive())
+//         {
+//             return false;
+//         }
+//     }
+//     Simulator::Cancel(m_timeoutEvent);
+
+//     // Step 2: Create our announce (HTTP GET request) -->
+//     std::stringstream request;
+
+//     std::string announceURL = m_myClient->GetTorrent()->GetAnnounceURL();
+//     std::string encodedInfoHash = m_myClient->GetTorrent()->GetEncodedInfoHash();
+
+//     request << announceURL.substr(announceURL.find('/', 7), announceURL.size() - announceURL.find('/', 7)) << "?";
+//     request << "info_hash=" << encodedInfoHash;
+//     request << "&peer_id=" << m_trackerId; // TODO: URL encode?
+//     request << "&port=" << m_myClient->GetPort();
+//     request << "&uploaded=0"; // TODO: Keep track of the amount of bytes uploaded!
+//     request << "&downloaded=" << m_myClient->GetBytesCompleted();
+//     request << "&left=" << m_myClient->GetTorrent()->GetFileLength() - m_myClient->GetBytesCompleted();
+//     request << "&compact=0";
+
+//     switch (event)
+//     {
+//     case STARTED:
+//         request << "&event=started";
+//         break;
+//     case STOPPED:
+//         request << "&event=stopped";
+//         break;
+//     case COMPLETED:
+//         request << "&event=completed";
+//         break;
+//     case GET_SEEDER:
+//         request << "&event=getseeder";
+//     default:
+//         break;
+//     }
+//     // v-- This is the standard value (see wiki.theory.org)
+//     request << "&numwant=" << ((numwant == 0) ? 50 : numwant);
+//     request << "&ip=" << m_myClient->GetIp();
+
+//     std::map<std::string, std::string>::const_iterator it = additionalParameters.begin();
+//     for (; it != additionalParameters.end(); ++it)
+//     {
+//         request << "&" << (*it).first << "=" << Utilities::EscapeHex((*it).second);
+//     }
+//     // <-- Step 2: Create our announce (HTTP GET request)
+
+//     // Step 3: Contact the tracker, schedule appropriate timeouts or closings of connections if required
+//     Ipv4Address trackerAddress = Ipv4Address(announceURL.substr(7, announceURL.find(':', 7) - 7).c_str());
+
+//     if (m_httpCC.HttpGetRequest(m_myClient->GetNode(),
+//                                 TcpSocketFactory::GetTypeId(),
+//                                 trackerAddress,
+//                                 80,
+//                                 request.str(),
+//                                 MakeCallback(&PeerConnectorStrategyLive::TrackerResponseEvent, this)))
+//     {
+//         m_timeoutEvent = Simulator::Schedule(m_timeout, &PeerConnectorStrategyBase::TrackerTimeout, this, event, numwant, true);
+//     }
+//     else if (closeCurrentConnection)
+//     {
+//         m_timeoutEvent =
+//             Simulator::Schedule(MilliSeconds(500), &PeerConnectorStrategyBase::ContactTrackerWrapper, this, event, numwant, closeCurrentConnection);
+//     }
+
+//     return true;
+// }
 
 } // namespace bittorrent
 } // namespace ns3

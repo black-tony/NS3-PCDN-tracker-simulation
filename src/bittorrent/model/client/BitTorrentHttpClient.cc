@@ -124,7 +124,7 @@ std::string BitTorrentHttpClient::HttpReceiveReply (Ptr<Socket> socket, bool wai
       m_buffer.append (std::string (reinterpret_cast<const char*> (buf), bufLen));
     }
   delete[] buf;
-
+  NS_LOG_DEBUG("BitTorrentHttpClientConnector: recv m_buffer \n----------------------------\n" << m_buffer << "\n-------------------");
   // Step 3: Search for the end of the HTTP header, indicated by a double line break/carriage return
   if (!m_dataStarted)
     {

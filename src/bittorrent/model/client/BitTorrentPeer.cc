@@ -99,6 +99,7 @@ Peer::Peer(Ptr<BitTorrentClient> myClient)
 
 Peer::~Peer()
 {
+    NS_LOG_INFO("Peer: client" << m_myClient->GetSelfRepresent() << " delete peer connection to " << GetRemoteIp());
     delete[] m_blockBuffer;
     delete[] m_blockSendBuffer;
     delete[] m_pieceCorruptionMap;
@@ -192,7 +193,7 @@ Peer::ServeNewPeer(Ptr<Socket> socket, Ipv4Address address, uint16_t port)
 void
 Peer::CloseConnection(bool silent)
 {
-    NS_LOG_INFO("Peer: Closing connection with " << GetRemoteIp() << "; silent: " << silent);
+    NS_LOG_INFO("Peer: client" << m_myClient->GetSelfRepresent() << " Closing connection with " << GetRemoteIp() << "; silent: " << silent);
 
     m_connectionState = CONN_STATE_CLOSED;
 
@@ -258,7 +259,7 @@ Peer::RequestPiece(uint32_t pieceIndex, uint32_t blockOffSet, uint32_t blockLeng
     // Step 6b: Indicate that this message is NOT a PIECE message (which is handled differently)
     m_sendQueuePieceMessageIndicators.push_back(false);
 
-    NS_LOG_INFO("Peer: Enqueueing request to " << GetRemoteIp() << "; for " << reqMsg.GetPieceIndex() << "@" << reqMsg.GetBlockOffset() << "->"
+    NS_LOG_INFO("Peer: client" << m_myClient->GetSelfRepresent() << " Enqueueing request to " << GetRemoteIp() << "; for " << reqMsg.GetPieceIndex() << "@" << reqMsg.GetBlockOffset() << "->"
                                                << reqMsg.GetBlockOffset() + reqMsg.GetBlockLength() << ".");
 
     // Step 7: Send out messages in the send queue
@@ -446,7 +447,7 @@ Peer::SendSubscribe(std::string streamHash)
 {
     if (m_remoteHashInfo.find(streamHash) != m_remoteHashInfo.end())
     {
-        NS_FATAL_ERROR("subscribe already sub stream");
+        NS_FATAL_ERROR(m_myClient->GetSelfRepresent() << "subscribe already sub stream");
     }
     m_remoteHashInfo.insert(streamHash);
     Ptr<Packet> packet = Create<Packet>();
@@ -719,7 +720,7 @@ Peer::HandleCancel(Ptr<Packet> packet)
     }
     else
     {
-        NS_LOG_INFO("Peer: Received CANCEL for non-existing prior REQUEST: " << cancelMsg.GetPieceIndex() << "@" << cancelMsg.GetBlockOffset() << "->"
+        NS_LOG_INFO("Peer: client" << m_myClient->GetSelfRepresent() << " Received CANCEL for non-existing prior REQUEST: " << cancelMsg.GetPieceIndex() << "@" << cancelMsg.GetBlockOffset() << "->"
                                                                              << cancelMsg.GetBlockOffset() + cancelMsg.GetBlockLength() << ".");
     }
 }
@@ -974,7 +975,7 @@ Peer::HandleRead(Ptr<Socket> socket)
                     m_packetBuffer->PeekHeader(bitfieldMsg);
                     if (m_lengthHeader.GetPacketLength() - 1 != m_myClient->GetTorrent()->GetBitfieldSize())
                     {
-                        NS_LOG_INFO("Peer: Received a bitfield of wrong length from " << GetRemoteIp() << ".");
+                        NS_LOG_INFO("Peer: client" << m_myClient->GetSelfRepresent() << " Received a bitfield of wrong length from " << GetRemoteIp() << ".");
                         return;
                     }
                     else
@@ -1096,7 +1097,7 @@ Peer::HandleSend(Ptr<Socket> socket, uint32_t bytesFree)
                  */
                 if (m_blockSendDataLeft <= 0)
                 {
-                    NS_LOG_INFO("Peer: Finished upload of request "
+                    NS_LOG_INFO("Peer: client" << m_myClient->GetSelfRepresent() << " Finished upload of request "
                                 << "Segment"
                                 << " to " << GetRemoteIp() << "; free bytes left in tx buffer: " << m_peerSocket->GetTxAvailable()
                                 << "; requests left: " << m_requestQueue.size() - 1 << ".");
@@ -1196,7 +1197,7 @@ Peer::HandleSend(Ptr<Socket> socket, uint32_t bytesFree)
                         // Step 5: Start another iteration so the piece data can be appended directly
                         nextIteration = true;
 
-                        NS_LOG_INFO("Peer: Starting to upload to " << GetRemoteIp() << "; streamHash " << subMsg.GetStreamHash() << ".");
+                        NS_LOG_INFO("Peer: client" << m_myClient->GetSelfRepresent() << " Starting to upload to " << GetRemoteIp() << "; streamHash " << subMsg.GetStreamHash() << ".");
                     }
                     else
                     {
@@ -1234,7 +1235,7 @@ Peer::HandleSend(Ptr<Socket> socket, uint32_t bytesFree)
                         // Step 5: Start another iteration so the piece data can be appended directly
                         nextIteration = true;
 
-                        NS_LOG_INFO("Peer: Starting to upload to " << GetRemoteIp() << "; piece " << pieceMsg.GetIndex() << "@"
+                        NS_LOG_INFO("Peer: client" << m_myClient->GetSelfRepresent() << " Starting to upload to " << GetRemoteIp() << "; piece " << pieceMsg.GetIndex() << "@"
                                                                    << m_requestQueue.front().blockOffSet << "->"
                                                                    << m_requestQueue.front().blockOffSet + m_requestQueue.front().blockLength << ".");
                     }
@@ -1335,7 +1336,7 @@ Peer::HandleConnected(Ptr<Socket> socket)
 void
 Peer::HandleConnectionFail(Ptr<Socket> socket)
 {
-    NS_LOG_INFO("Peer: Connection with " << GetRemoteIp() << " failed.");
+    NS_LOG_INFO("Peer: client" << m_myClient->GetSelfRepresent() << " Connection with " << GetRemoteIp() << " failed.");
 
     m_connectionState = CONN_STATE_FAILED;
 
@@ -1349,7 +1350,7 @@ Peer::HandleConnectionFail(Ptr<Socket> socket)
 void
 Peer::HandleConnectionClosed(Ptr<Socket> socket)
 {
-    NS_LOG_INFO("Peer: Connection with " << GetRemoteIp() << " closed.");
+    NS_LOG_INFO("Peer: client" << m_myClient->GetSelfRepresent() << " Connection with " << GetRemoteIp() << " closed.");
 
     if (m_connectionState == CONN_STATE_CLOSED || m_connectionState == CONN_STATE_CLOSED_WITH_ERROR)
     {
@@ -1402,7 +1403,7 @@ Peer::PseudoDeInitializeMe()
     NS_LOG_INFO(m_myClient->GetNode()->GetId() << ": Pseudo-deinitializing the peer class for " << GetRemoteIp());
 
     m_remotePeerId.clear();
-
+    m_remoteHashInfo.clear();
     m_bitfield.clear();
 
     m_packetBuffer->RemoveAtStart(m_packetBuffer->GetSize());

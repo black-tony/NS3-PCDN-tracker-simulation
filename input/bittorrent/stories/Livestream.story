@@ -61,3 +61,6 @@
 0h0m0s: group PCDN init
 0h0m0s: group CDN init
 0h0m5s: group leechers init
+//
+0h0m16s: client 6 leave cloud
+0h0m30s: client 6 rejoin cloud

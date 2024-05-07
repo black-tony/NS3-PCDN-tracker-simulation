@@ -673,30 +673,57 @@ BitTorrentClient::RegisterPeer(Ptr<Peer> peer)
     m_peerList.insert(std::make_pair(peer, std::set<std::string>()));
     // m_peerList[''];
 }
-
+std::string
+BitTorrentClient::GetSelfRepresent() const
+{
+    std::stringstream ss;
+    ss << "(" << GetClientType() << " : " << GetNode()->GetId() << " @ " << GetIp() << ")";
+    return ss.str();
+}
 void
 BitTorrentClient::UnregisterPeer(Ptr<Peer> peer)
 {
-    for (std::map<Ptr<Peer>, std::set<std::string>>::iterator it = m_peerList.begin(); it != m_peerList.end();)
+    auto it = m_peerList.find(peer);
+    if (it == m_peerList.end())
     {
-        std::map<Ptr<Peer>, std::set<std::string>>::iterator it2 = it;
-        ++it2;
-        if (it->first == peer)
-        {
-            m_peerList.erase(it);
-            // break;
-        }
-        it = it2;
+        return;
     }
+    for(const auto& streamHash : it->second)
+    {
+        //unregister all the peers
+        auto hashToStreamIt = m_subscriptionList.find(streamHash);
+        if(hashToStreamIt != m_subscriptionList.end())
+        {
+            hashToStreamIt->second.erase(peer);
+        }
+
+        hashToStreamIt = m_upperStreamList.find(streamHash);
+        if(hashToStreamIt != m_upperStreamList.end())
+        {
+            hashToStreamIt->second.erase(peer);
+        }
+    }
+    m_peerList.erase(it);
+    // for (std::map<Ptr<Peer>, std::set<std::string>>::iterator it = m_peerList.begin(); it != m_peerList.end();)
+    // {
+    //     std::map<Ptr<Peer>, std::set<std::string>>::iterator it2 = it;
+    //     ++it2;
+    //     if (it->first == peer)
+    //     {
+    //         m_peerList.erase(it);
+    //         // break;
+    //     }
+    //     it = it2;
+    // }
 }
 
 void
 BitTorrentClient::SubscribeStream(Ptr<Peer> peer, std::string streamHash)
 {
-    NS_LOG_INFO(this << "(" << GetIp() << ", " << GetClientType() << ") recv subscribe info " << streamHash << " from " << peer->GetRemoteIp());
+    NS_LOG_INFO("BitTorrentClient: " << GetSelfRepresent() << "recv subscribe info " << streamHash << " from " << peer->GetRemoteIp());
     if (m_peerList.find(peer) == m_peerList.end())
     {
-        NS_LOG_WARN(this << "find peer" << peer->GetRemotePeerId() << "not registerd but create sub");
+        NS_LOG_WARN("BitTorrentClient: " << GetSelfRepresent() << "find peer" << peer->GetRemotePeerId() << "not registerd but create sub");
         return;
     }
     m_peerList[peer].insert(streamHash);
@@ -731,7 +758,7 @@ BitTorrentClient::UnSubscribeStream(Ptr<Peer> peer, std::string streamHash)
 {
     if (m_peerList.find(peer) == m_peerList.end())
     {
-        NS_LOG_WARN(this << "find peer" << peer->GetRemotePeerId() << "not registerd but unsub");
+        NS_LOG_WARN("BitTorrentClient: " << GetSelfRepresent() << "find peer" << peer->GetRemotePeerId() << "not registerd but unsub");
         return;
     }
     m_peerList[peer].erase(streamHash);
@@ -772,7 +799,7 @@ BitTorrentClient::RegisterUpperStream(Ptr<Peer> peer, std::string streamHash)
 {
     if (m_peerList.find(peer) == m_peerList.end())
     {
-        NS_LOG_WARN(this << "find peer" << peer->GetRemotePeerId() << "not registerd but create sub");
+        NS_LOG_WARN("BitTorrentClient: " << GetSelfRepresent() << "find peer" << peer->GetRemotePeerId() << "not registerd but create sub");
         return;
     }
     m_peerList[peer].insert(streamHash);
@@ -792,7 +819,7 @@ BitTorrentClient::UnRegisterUpperStream(Ptr<Peer> peer, std::string streamHash)
 {
     if (m_peerList.find(peer) == m_peerList.end())
     {
-        NS_LOG_WARN(this << "find peer" << peer->GetRemotePeerId() << "not registerd but unsub");
+        NS_LOG_WARN("BitTorrentClient: " << GetSelfRepresent() << "find peer" << peer->GetRemotePeerId() << "not registerd but unsub");
         return;
     }
     m_peerList[peer].erase(streamHash);

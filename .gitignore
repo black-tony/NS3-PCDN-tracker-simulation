@@ -25,7 +25,7 @@
 testpy-output
 
 bindings/python/pybindgen/
-
+output/*
 venv/
 
 ms_print.*

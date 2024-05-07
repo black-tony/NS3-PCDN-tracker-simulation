@@ -22,7 +22,6 @@
 
 #include "ns3/BitTorrentClient.h"
 #include "ns3/BitTorrentPeer.h"
-
 #include "ns3/log.h"
 
 namespace ns3
@@ -57,10 +56,15 @@ RequestSchedulingStrategyLive::DoInitialize()
 void
 RequestSchedulingStrategyLive::ProcessStreamBufferReadyEvent(std::string streamHash)
 {
-    for(auto it = m_myClient->GetSubscriptionListIterator(streamHash); it != m_myClient->GetSubscriptionListEnd(streamHash); it++)
+    int peernum = 0;
+    for (auto it = m_myClient->GetSubscriptionListIterator(streamHash); it != m_myClient->GetSubscriptionListEnd(streamHash); it++)
     {
-        (*it)->SendSegment(streamHash);//YTODO Block Infos
+        (*it)->SendSegment(streamHash); // YTODO Block Infos
+
+        peernum++;
     }
+    NS_LOG_INFO("RequestSchedulingStrategyLive client" << m_myClient->GetSelfRepresent() << " stream buffer ready for " << streamHash
+                                                       << " to peernum " << peernum);
 }
 
 // void RequestSchedulingStrateyLive::ProcessPeerRequestEvent (Ptr<Peer> peer, uint32_t pieceIndex, uint32_t blockOffset, uint32_t blockLength)

@@ -864,7 +864,7 @@ class BitTorrentClient : public Application
      * @param peer pointer to the Peer object to add.
      */
     void RegisterPeer(Ptr<Peer> peer);
-
+    std::string GetSelfRepresent() const;
     /**
      * \brief Remove a peer from the client's list of peers.
      *

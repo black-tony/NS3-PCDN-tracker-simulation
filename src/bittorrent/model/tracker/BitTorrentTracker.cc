@@ -389,7 +389,7 @@ BitTorrentTracker::DataCreater(std::string path, Ptr<Socket> socket, const Addre
 
         uint8_t* responsePtr = new uint8_t[response.size()];
         response.copy(reinterpret_cast<char*>(responsePtr), response.size());
-
+        NS_LOG_DEBUG("Tracker: generate response \"" << response << "\"");
         m_handleSendData(socket, responsePtr, response.size(), "200");
         delete[] responsePtr;
     }
@@ -521,6 +521,11 @@ BitTorrentTracker::GenerateResponseForPeer(const BTDict& clientInfo) const
                     curStr = streamHash;
                     result += "10:streamhash" + lexical_cast<std::string>(curStr.size()) + ":" + curStr;
                     result += "e";
+                    NS_LOG_INFO("Tracker: assign peer@" << (*curClient.find("ip")).second << "to " << (*(clientInfo.find("peer_id"))).second);
+                }
+                else
+                {
+                    NS_LOG_WARN("IREEGULAR");
                 }
             }
 
@@ -840,7 +845,9 @@ BitTorrentTracker::UpdateClient(BTDict& clientInfo)
         else if (peer_type == BT_STREAM_PEERTYPE_PCDN)
         {
             if (m_PCDNInfo.find(peer_id) == m_PCDNInfo.end())
+            {
                 return;
+            }
             oldClientInfo = &m_PCDNInfo[peer_id];
             // m_PCDNInfo[peer_id] = clientInfo;
         }
@@ -929,7 +936,9 @@ BitTorrentTracker::RemoveClient(const BTDict& clientInfo)
         else if (peer_type == BT_STREAM_PEERTYPE_PCDN)
         {
             if (m_PCDNInfo.find(peer_id) == m_PCDNInfo.end())
+            {
                 return;
+            }
             // oldClientInfo = &m_PCDNInfo[peer_id];
             m_PCDNInfo.erase(peer_id);
         }

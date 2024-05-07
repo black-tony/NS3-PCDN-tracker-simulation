@@ -102,6 +102,12 @@ public:
     void DoInitialize() override;
     void StartListening(uint16_t port) override;
     void NewConnectionCreatedCallback(Ptr<Socket> sock, const Address& addr) override;
+    void DisconnectFromCloud() override;
+    // void TrackerResponseEvent(Ptr<Socket> socket);
+    // bool ContactTracker(TrackerContactReason event,
+    //                     uint16_t numwant,
+    //                     std::map<std::string, std::string> additionalParameters,
+    //                     bool closeCurrentConnection);
     // bool ContactTracker (TrackerContactReason event, uint16_t numwant, std::map<std::string, std::string> additionalParameters, bool
     // closeCurrentConnection) override;
 };

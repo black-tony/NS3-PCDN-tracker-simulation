@@ -66,16 +66,24 @@ PeerConnectorStrategyBase::PeerConnectorStrategyBase(Ptr<BitTorrentClient> myCli
 
 PeerConnectorStrategyBase::~PeerConnectorStrategyBase()
 {
-    if(!m_nextPeriodicEvent.IsExpired())
+    if (!m_nextPeriodicEvent.IsExpired())
+    {
         m_nextPeriodicEvent.Cancel();
-    if(!m_timeoutEvent.IsExpired())
+    }
+    if (!m_timeoutEvent.IsExpired())
+    {
         m_timeoutEvent.Cancel();
-    if(!m_nextPeriodicReannouncement.IsExpired())
+    }
+    if (!m_nextPeriodicReannouncement.IsExpired())
+    {
         m_nextPeriodicReannouncement.Cancel();
+    }
     for(auto it = m_disconnectEvent.begin(); it != m_disconnectEvent.end(); it++)
     {
-        if(!it->second.IsExpired())
+        if (!it->second.IsExpired())
+        {
             it->second.Cancel();
+        }
     }
 }
 
@@ -258,7 +266,7 @@ PeerConnectorStrategyBase::ConnectToPeers(uint16_t count)
 
     // Step 1: Get the clients that we MAY connect to
     const std::set<std::pair<uint32_t, uint16_t>>& potentialPeers = GetPotentialClients();
-    if (potentialPeers.size() == 0) // No one we could connect to
+    if (potentialPeers.empty()) // No one we could connect to
     {
         return 0;
     }
@@ -626,7 +634,9 @@ PeerConnectorStrategyBase::ParseResponse(std::istream& response)
     }
 
     if (!m_myClient->GetConnectedToCloud())
+    {
         m_myClient->CloudConnectionEstablishedEvent();
+    }
 
     m_myClient->SetConnectedToCloud(true);
 }
@@ -712,6 +722,7 @@ PeerConnectorStrategyBase::TrackerResponseEvent(Ptr<Socket> socket)
 
         m_httpCC.CloseAndReInit();
         m_trackerBuffer.clear();
+        m_trackerBuffer.str("");
         Simulator::Cancel(m_timeoutEvent);
 
         m_myClient->TrackerResponseReceivedEvent();
@@ -723,6 +734,8 @@ PeerConnectorStrategyBase::TrackerResponseEvent(Ptr<Socket> socket)
         {
             m_httpCC.CloseAndReInit();
             m_trackerBuffer.clear();
+            m_trackerBuffer.str("");
+
             Simulator::Cancel(m_timeoutEvent);
 
             NS_LOG_INFO("PeerConnectorStrategyBase: " << m_myClient->GetIp() << ":  Received error header from tracker.");

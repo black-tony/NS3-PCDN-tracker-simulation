@@ -61,8 +61,11 @@ main(int argc, char* argv[])
 {
     // LogComponentEnableAll (LOG_PREFIX_FUNC);
 
-    LogComponentEnable("bittorrent::Peer", LOG_LEVEL_ALL);
+    LogComponentEnable("BitTorrentHttpClient", LOG_LEVEL_ALL);
     LogComponentEnable("bittorrent::BitTorrentClient", LOG_LEVEL_INFO);
+    LogComponentEnable("bittorrent::RequestSchedulingStrategyLive", LOG_LEVEL_INFO);
+    LogComponentEnable("BitTorrentTracker", LOG_LEVEL_ALL);
+    
     // LogComponentEnable ("TcpSocketBase", LOG_LEVEL_ALL);
 
     // LogComponentEnable ("bittorrent::PartSelectionStrategyBase", LOG_LEVEL_ALL);
@@ -169,6 +172,13 @@ main(int argc, char* argv[])
     gatherer->SetStopFraction(-1.0, 1.0);
     // <-- Emulation setup (part 2)
 #endif
+    std::ofstream fout("output/NodeDistribution.txt");
+    for (auto it = btNodes.Begin(); it != btNodes.End(); it++)
+    {
+        fout << dynamic_cast<BitTorrentVideoClient*>(PeekPointer((*it)->GetApplication(0)))->GetNode()->GetId() << "\t"
+             << dynamic_cast<BitTorrentVideoClient*>(PeekPointer((*it)->GetApplication(0)))->GetClientType() << std::endl;
+    }
+    fout.close();
     std::string probeType;
     std::string tracePath;
     // Ipv4L3Protocol
