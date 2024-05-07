@@ -11,12 +11,12 @@
 0h0m0s: topology set delays min 0 max 0
 //
 //
-0h0m0s: topology add clients count 1 type point-to-point uplink 448kbps downlink 2048kbps delay 0ms
+0h0m0s: topology add clients count 1 type point-to-point uplink 100Mbps downlink 100Mbps delay 0ms
 0h0m0s: all clients join group CDN
-0h0m0s: topology add clients count 2 type point-to-point uplink 448kbps downlink 2048kbps delay 0ms
+0h0m0s: topology add clients count 2 type point-to-point uplink 50Mbps downlink 100Mbps delay 0ms
 0h0m0s: all clients join group PCDN
 0h0m0s: group CDN leave group PCDN
-0h0m0s: topology add clients count 4 type point-to-point uplink 448kbps downlink 2048kbps delay 0ms
+0h0m0s: topology add clients count 4 type point-to-point uplink 448kbps downlink 10Mbps delay 0ms
 0h0m0s: all clients join group leechers
 0h0m0s: group PCDN leave group leechers
 0h0m0s: group CDN leave group leechers

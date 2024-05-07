@@ -61,16 +61,16 @@ main(int argc, char* argv[])
 {
     // LogComponentEnableAll (LOG_PREFIX_FUNC);
 
-    LogComponentEnable("BitTorrentHttpClient", LOG_LEVEL_ALL);
+    // LogComponentEnable("BitTorrentHttpClient", LOG_LEVEL_ALL);
     LogComponentEnable("bittorrent::BitTorrentClient", LOG_LEVEL_INFO);
     LogComponentEnable("bittorrent::RequestSchedulingStrategyLive", LOG_LEVEL_INFO);
-    LogComponentEnable("BitTorrentTracker", LOG_LEVEL_ALL);
+    // LogComponentEnable("BitTorrentTracker", LOG_LEVEL_ALL);
     
     // LogComponentEnable ("TcpSocketBase", LOG_LEVEL_ALL);
 
     // LogComponentEnable ("bittorrent::PartSelectionStrategyBase", LOG_LEVEL_ALL);
-    LogComponentEnable("bittorrent::PeerConnectorStrategyBase", LOG_LEVEL_ALL);
-    LogComponentEnable("bittorrent::PeerConnectorStrategyLive", LOG_LEVEL_ALL);
+    // LogComponentEnable("bittorrent::PeerConnectorStrategyBase", LOG_LEVEL_ALL);
+    LogComponentEnable("bittorrent::PeerConnectorStrategyLive", LOG_LEVEL_INFO);
     LogComponentEnable("bittorrent::VODSimBriteTopologyHelper", LOG_LEVEL_ALL);
 
 #ifdef NS3_MPI

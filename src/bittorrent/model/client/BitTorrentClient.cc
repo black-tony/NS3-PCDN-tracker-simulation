@@ -859,6 +859,8 @@ BitTorrentClient::StreamBufferReady(std::string streamHash)
     {
         (*iter)(streamHash);
     }
+    if(m_clientType == BT_STREAM_PEERTYPE_CDN)
+        m_dataAvailableTimer[streamHash] = Simulator::Schedule(Seconds(1), &BitTorrentClient::StreamBufferReady, this, streamHash);
 }
 
 void
