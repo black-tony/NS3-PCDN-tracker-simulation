@@ -68,6 +68,15 @@ PeerConnectorStrategyBase::~PeerConnectorStrategyBase()
 {
     if(!m_nextPeriodicEvent.IsExpired())
         m_nextPeriodicEvent.Cancel();
+    if(!m_timeoutEvent.IsExpired())
+        m_timeoutEvent.Cancel();
+    if(!m_nextPeriodicReannouncement.IsExpired())
+        m_nextPeriodicReannouncement.Cancel();
+    for(auto it = m_disconnectEvent.begin(); it != m_disconnectEvent.end(); it++)
+    {
+        if(!it->second.IsExpired())
+            it->second.Cancel();
+    }
 }
 
 void

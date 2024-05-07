@@ -64,6 +64,6 @@
 
 #define BT_PROTOCOL_LISTENER_PORT 6881
 
-#define BT_PEER_CONNECTOR_CONNECTION_ACCEPTANCE_DELAY 10000 // In milliseconds; Usually, 10 seconds should be enough
+#define BT_PEER_CONNECTOR_CONNECTION_ACCEPTANCE_DELAY 5000 // In milliseconds; Usually, 10 seconds should be enough
 
 #endif /* BITTORRENTCLIENT_DEFINES_H_ */

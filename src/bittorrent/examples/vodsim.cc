@@ -59,7 +59,7 @@ int main (int argc, char *argv[])
     // LogComponentEnableAll (LOG_PREFIX_FUNC);
     
   LogComponentEnable ("bittorrent::Peer", LOG_LEVEL_ALL);
-  LogComponentEnable ("BitTorrentTracker", LOG_LEVEL_INFO);
+  LogComponentEnable ("bittorrent::BitTorrentClient", LOG_LEVEL_INFO);
   // LogComponentEnable ("TcpSocketBase", LOG_LEVEL_ALL);
   
   // LogComponentEnable ("bittorrent::PartSelectionStrategyBase", LOG_LEVEL_ALL);

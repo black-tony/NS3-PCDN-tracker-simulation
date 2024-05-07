@@ -293,8 +293,7 @@ BitTorrentClient::StartApplication()
     std::string outputIpString = outputIpStream.str();
     GlobalMetricsGatherer::GetInstance()->WriteToFile(
         "active-clients",
-        GetPeerId() + " on node " + lexical_cast<std::string>(GetNode()->GetId())
-        + " peer type " + m_clientType
+        GetPeerId() + " on node " + lexical_cast<std::string>(GetNode()->GetId()) + " peer type " + m_clientType
 #ifdef NS3_MPI
             + " (MPI system ID " + lexical_cast<std::string>(GetNode()->GetSystemId()) + " )"
 #endif
@@ -326,7 +325,7 @@ BitTorrentClient::SetProtocol(std::string protocol)
 {
     // if (m_protocol.empty())
     // {
-        m_protocol = protocol;
+    m_protocol = protocol;
     // }
 }
 
@@ -694,6 +693,7 @@ BitTorrentClient::UnregisterPeer(Ptr<Peer> peer)
 void
 BitTorrentClient::SubscribeStream(Ptr<Peer> peer, std::string streamHash)
 {
+    NS_LOG_INFO(this << "(" << GetIp() << ", " << GetClientType() << ") recv subscribe info " << streamHash << " from " << peer->GetRemoteIp());
     if (m_peerList.find(peer) == m_peerList.end())
     {
         NS_LOG_WARN(this << "find peer" << peer->GetRemotePeerId() << "not registerd but create sub");
@@ -735,9 +735,9 @@ BitTorrentClient::UnSubscribeStream(Ptr<Peer> peer, std::string streamHash)
         return;
     }
     m_peerList[peer].erase(streamHash);
-    if(m_peerList[peer].empty())
+    if (m_peerList[peer].empty())
     {
-        //YTODO should we unregister or close connect to this peer?
+        // YTODO should we unregister or close connect to this peer?
     }
     if (m_subscriptionList.find(streamHash) == m_subscriptionList.end())
     {
@@ -781,7 +781,6 @@ BitTorrentClient::RegisterUpperStream(Ptr<Peer> peer, std::string streamHash)
         if (m_clientType == BT_STREAM_PEERTYPE_CDN)
         {
             NS_FATAL_ERROR("CDN DO NOT HAVE UPPER STREAM");
-           
         }
         m_upperStreamList[streamHash] = std::set<Ptr<Peer>>();
     }
@@ -797,9 +796,9 @@ BitTorrentClient::UnRegisterUpperStream(Ptr<Peer> peer, std::string streamHash)
         return;
     }
     m_peerList[peer].erase(streamHash);
-    if(m_peerList[peer].empty())
+    if (m_peerList[peer].empty())
     {
-        //YTODO should we unregister or close connect to this peer?
+        // YTODO should we unregister or close connect to this peer?
     }
     if (m_upperStreamList.find(streamHash) == m_upperStreamList.end())
     {
@@ -812,17 +811,15 @@ BitTorrentClient::UnRegisterUpperStream(Ptr<Peer> peer, std::string streamHash)
         if (m_clientType == BT_STREAM_PEERTYPE_CDN)
         {
             NS_FATAL_ERROR("CDN DONT HAVE UPPER STREAM");
-            
         }
         else if (m_clientType == BT_STREAM_PEERTYPE_PCDN)
         {
-            //YTODO upper stream is empty, which case, should we unregister all downstreams?
+            // YTODO upper stream is empty, which case, should we unregister all downstreams?
         }
         else
         {
             // upper stream is empty, means already scheduled close connect event
             // do nothing
-
         }
     }
 }

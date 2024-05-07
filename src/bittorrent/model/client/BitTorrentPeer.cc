@@ -877,6 +877,7 @@ Peer::HandleRead(Ptr<Socket> socket)
 
                 m_connectionEstablishmentTime = Simulator::Now();
                 m_connectionState = CONN_STATE_CONNECTED;
+                m_myClient->PeerConnectionEstablishedEvent(this);
 
                 m_lengthHeader.SetPacketLength(BT_PROTOCOL_MESSAGES_LENGTHHEADER_LENGTH);
             }

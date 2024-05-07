@@ -180,10 +180,10 @@ PeerConnectorStrategyLive::ConnectToPeers(uint16_t count)
             // Peer class
             Ptr<Peer> newPeer = CreateObject<Peer>(m_myClient);
             Simulator::ScheduleNow(&Peer::ConnectToPeer, newPeer, connectToAddress, (*iter).second.second);
-            Simulator::Schedule(MilliSeconds(BT_PEER_CONNECTOR_CONNECTION_ACCEPTANCE_DELAY),
-                                &PeerConnectorStrategyLive::CheckAndDisconnectIfRejected,
-                                this,
-                                newPeer);
+            m_disconnectEvent[newPeer] = Simulator::Schedule(MilliSeconds(BT_PEER_CONNECTOR_CONNECTION_ACCEPTANCE_DELAY),
+                                                             &PeerConnectorStrategyLive::CheckAndDisconnectIfRejected,
+                                                             this,
+                                                             newPeer);
 
             // newPeer->
             // Step 4a3: Insert this connection into the list of pending connections
@@ -191,7 +191,7 @@ PeerConnectorStrategyLive::ConnectToPeers(uint16_t count)
             m_pendingConnectionToPeers[(*iter).second.first] = newPeer;
             // if(m_PeerWithToRegisterHash.find(m_connectedToPeers[(*iter).second.first]) == m_PeerWithToRegisterHash.end())
             m_PeerWithToRegisterHash[newPeer] = std::set<std::string>();
-            m_PeerWithToRegisterHash[m_connectedToPeers[(*iter).second.first]].insert(iter->first);
+            m_PeerWithToRegisterHash[newPeer].insert(iter->first);
             // m_pendingConnectionsWithPeer.insert
             // Step 4a4: Adjust our "counters"
             ++peersConnected;
@@ -370,7 +370,7 @@ PeerConnectorStrategyLive::ParseResponse(std::istream& response)
                 continue;
             }
             // NS_ASSERT(peerAddr);
-            Ptr<TorrentDataString> peerStreamHash = DynamicCast<TorrentDataString>(currentPeer->GetData("streamHash"));
+            Ptr<TorrentDataString> peerStreamHash = DynamicCast<TorrentDataString>(currentPeer->GetData("streamhash"));
             if (!peerStreamHash)
             {
                 NS_LOG_WARN("We cant find streamHash keyword in the peerlist!");
@@ -397,6 +397,11 @@ PeerConnectorStrategyLive::ParseResponse(std::istream& response)
             peer.first = buf.Get();
             peer.second = static_cast<uint16_t>(peerPort->GetData());
             m_potentialClients.insert(std::make_pair(peerStreamHash->GetData(), peer));
+            std::stringstream outputIpStream;
+            buf.Print(outputIpStream);
+            std::string outputIpString = outputIpStream.str();
+            NS_LOG_INFO(this << " client type " << m_myClient->GetClientType() << " recv a peer streamHash=" << peerStreamHash->GetData()
+                             << " address = " << outputIpString);
         }
     }
 
@@ -417,6 +422,8 @@ PeerConnectorStrategyLive::SubscribeAllStreams(Ptr<Peer> peer)
     for (auto streamhashIt = subIt->second.begin(); streamhashIt != subIt->second.end(); streamhashIt++)
     {
         peer->SendSubscribe(*streamhashIt);
+        NS_LOG_INFO(this << "(" << m_myClient->GetIp() << ", " << m_myClient->GetClientType() << ")"
+                         << " send subscribe hash " << *streamhashIt << " to " << peer->GetRemoteIp());
     }
     m_PeerWithToRegisterHash.erase(subIt);
 }
@@ -430,6 +437,19 @@ PeerConnectorStrategyLive::ProcessConnectionCloseEvent(Ptr<Peer> peer)
 void
 PeerConnectorStrategyLive::ProcessPeerConnectionEstablishedEvent(Ptr<Peer> peer)
 {
+    m_myClient->RegisterPeer(peer);
+    // m_myClient->PeerConnectionEstablishedEvent(peer);
+    if(m_disconnectEvent.find(peer) != m_disconnectEvent.end())
+    {
+        if(!m_disconnectEvent[peer].IsExpired())
+        {
+            m_disconnectEvent[peer].Cancel();
+        }
+        m_disconnectEvent.erase(peer);
+    }
+    NS_LOG_INFO("PeerConnectorStrategyLive: " << m_myClient->GetIp() << ": Fully established connection with " << peer->GetRemoteIp() << ":"
+                                                  << peer->GetRemotePort() << ".");
+
     AddConnection(peer->GetRemoteIp().Get());
     m_connectedToPeers[peer->GetRemoteIp().Get()] = peer;
     m_pendingConnections.erase(peer->GetRemoteIp().Get());
@@ -484,12 +504,13 @@ PeerConnectorStrategyLive::CheckAndDisconnectIfRejected(Ptr<Peer> peer)
         DisconnectPeerSilent(peer);
         m_pendingConnections.erase(peer->GetRemoteIp().Get());
         m_pendingConnectionToPeers.erase(peer->GetRemoteIp().Get());
+        m_disconnectEvent.erase(peer);
     }
     else // Else, fully register the peer with the client
     {
         m_myClient->RegisterPeer(peer);
         m_myClient->PeerConnectionEstablishedEvent(peer);
-
+        m_disconnectEvent.erase(peer);
         NS_LOG_INFO("PeerConnectorStrategyLive: " << m_myClient->GetIp() << ": Fully established connection with " << peer->GetRemoteIp() << ":"
                                                   << peer->GetRemotePort() << ".");
     }
@@ -524,6 +545,32 @@ PeerConnectorStrategyLive::DoInitialize()
     // m_myClient->
     // m_myClient->RegisterCallbackStreamBufferReadyEvent(MakeCallback(&PeerConnectorStrategyLive::OnStreamBufferReady, this))
 }
+void
+PeerConnectorStrategyLive::StartListening(uint16_t port)
+{
+    // Create and open a TCP socket to listen at for incoming connection attempts
+    TypeId tid = TypeId::LookupByName("ns3::TcpSocketFactory");
+    m_serverSocket = Socket::CreateSocket(m_myClient->GetNode(), tid);
+    m_serverSocket->SetAcceptCallback(MakeCallback(&PeerConnectorStrategyBase::AcceptCallback, this),
+                                      MakeCallback(&PeerConnectorStrategyLive::NewConnectionCreatedCallback, this));
+    m_serverSocket->SetAttribute("SegmentSize", UintegerValue(BT_PEER_SOCKET_TCP_SEGMENT_SIZE_MAX));
+    m_serverSocket->Bind(InetSocketAddress(m_myClient->GetIp(), port));
+    m_serverSocket->Listen();
+}
+void
+PeerConnectorStrategyLive::NewConnectionCreatedCallback(Ptr<Socket> sock, const Address& addr)
+{
+    // Similar to connections initiated on our own, for each accepted connection, we crate a Peer object and feed it with the appropriate information
+    // and method calls
+    InetSocketAddress buf = InetSocketAddress::ConvertFrom(addr);
+    Ptr<Peer> newPeer = CreateObject<Peer>(m_myClient);
+    Simulator::ScheduleNow(&Peer::ServeNewPeer, newPeer, sock, buf.GetIpv4(), buf.GetPort());
+    m_disconnectEvent[newPeer] = Simulator::Schedule(MilliSeconds(BT_PEER_CONNECTOR_CONNECTION_ACCEPTANCE_DELAY),
+                        &PeerConnectorStrategyBase::CheckAndDisconnectIfRejected,
+                        this,
+                        newPeer);
+}
+
 
 } // namespace bittorrent
 } // namespace ns3

@@ -299,10 +299,10 @@ class BitTorrentTracker : public Application
     // The inverse of AddClient()
     void RemoveClient(const BTDict& clientInfo);
 
-    std::set<BTDoubleDict::const_iterator> GetSeeders(const std::string streamHash, int requireNum, std::string strategy) const;
+    std::set<uint32_t> GetSeeders(const std::string streamHash, int requireNum, std::string strategy, std::string targetDevice) const;
 
-    std::set<BTDoubleDict::const_iterator> GetSeedersRandom(const std::string streamHash, int requireNum) const;
-    std::set<BTDoubleDict::const_iterator> GetSeedersTreeFirst(const std::string streamHash, int requireNum) const;
+    std::set<uint32_t> GetSeedersRandom(const std::string streamHash, int requireNum, std::string targetDevice) const;
+    std::set<uint32_t> GetSeedersTreeFirst(const std::string streamHash, int requireNum, std::string targetDevice) const;
     // std::set<BTDoubleDict::const_iterator> GetSeeders(const std::string streamHash, int requireNum);
 };
 

@@ -100,7 +100,10 @@ public:
    */
   const std::set<std::pair<std::string, std::pair<uint32_t, uint16_t>>> & GetPotentialClients () const;
     void DoInitialize() override;
-    // bool ContactTracker (TrackerContactReason event, uint16_t numwant, std::map<std::string, std::string> additionalParameters, bool closeCurrentConnection) override;
+    void StartListening(uint16_t port) override;
+    void NewConnectionCreatedCallback(Ptr<Socket> sock, const Address& addr) override;
+    // bool ContactTracker (TrackerContactReason event, uint16_t numwant, std::map<std::string, std::string> additionalParameters, bool
+    // closeCurrentConnection) override;
 };
 
 } // namespace bittorrent

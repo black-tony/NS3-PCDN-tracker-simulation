@@ -82,7 +82,7 @@ protected:
   // Reannouncements
   Time               m_periodicInterval;               // The interval at which the strategy tries to connect to new peers
   EventId            m_nextPeriodicEvent;              // The next associated periodic event
-
+  std::map<Ptr<Peer>, EventId>            m_disconnectEvent;
   // Swarm participant retrieval via standard HTTP tracker
   BitTorrentHttpClient m_httpCC;                       // The HTTP client used to contact the tracker
   std::stringstream  m_trackerBuffer;                  // Used to store (intermediate) answers from the tracker
