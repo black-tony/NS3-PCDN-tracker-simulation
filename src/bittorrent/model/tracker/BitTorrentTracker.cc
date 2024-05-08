@@ -111,6 +111,46 @@ BitTorrentTracker::SetAnnouncePath(std::string announcePath)
     m_announcePath = announcePath;
 }
 
+void
+BitTorrentTracker::UpdateClientBacksource(BTDict clientInfo)
+{
+    if (IsStreamInfo(clientInfo))
+    {
+        std::string streamHash = clientInfo.find("StreamHash")->second;
+        std::transform(streamHash.begin(), streamHash.end(), streamHash.begin(), toupper);
+        std::string peer_id = (*(clientInfo.find("peer_id"))).second;
+        std::map<std::string, BitTorrentTrackerCloudInfo>::iterator cloudInfoIt;
+        std::string peer_type = clientInfo.find("PeerType")->second;
+        NS_LOG_INFO("We find a streaming client " << peer_id << " type " << peer_type << " with Hash " << streamHash);
+
+        if (peer_type == BT_STREAM_PEERTYPE_CDN)
+        {
+            // m_CDNBacksource[peer_id].insert(streamHash);
+            NS_FATAL_ERROR("PEER TYPE" << peer_type << "DO not need update backsource");
+
+        }
+        else if (peer_type == BT_STREAM_PEERTYPE_PCDN)
+        {
+            m_PCDNBacksource[peer_id].insert(streamHash);
+        }
+        else if (peer_type == BT_STREAM_PEERTYPE_CLIENT)
+        {
+            NS_FATAL_ERROR("PEER TYPE" << peer_type << "DO not need update backsource");
+            // cloudInfoIt = m_cloudInfo.find(streamHash);
+            // cloudInfoIt->second.m_clients[peer_id] = clientInfo;
+        }
+        else
+        {
+            NS_FATAL_ERROR("UNKNOWN PEER TYPE" << peer_type);
+        }
+        // NS_LOG_INFO("client " << peer_type << " with id " << peer_id << " now has inside the cloud");
+    }
+    else
+    {
+        NS_FATAL_ERROR("should not meet update backsource in vod");
+    }
+}
+
 std::string
 BitTorrentTracker::GetScrapePath() const
 {
@@ -375,6 +415,7 @@ BitTorrentTracker::DataCreater(std::string path, Ptr<Socket> socket, const Addre
             }
             else if (eventType == "getseeder")
             {
+                UpdateClientBacksource(clientInfo);
                 response = GenerateResponseForPeer(clientInfo);
             }
             else
@@ -469,17 +510,21 @@ BitTorrentTracker::GenerateResponseForPeer(const BTDict& clientInfo) const
 
             // Step 2: Get a random selection of peers and pass it to the client -->
             result += "5:peersl";
-            BTDoubleDict::const_iterator tmpIt;
-            uint32_t len;
+            std::set<std::string>::const_iterator tmpIt;
+            const BTDoubleDict * tmplist =nullptr;
+            // uint32_t len;
             if (targetDevice == BT_STREAM_PEERTYPE_CDN)
             {
-                tmpIt = m_CDNInfo.begin();
-                len = m_CDNInfo.size();
+                tmpIt = m_avaliableCDN.begin();
+                tmplist = &m_CDNInfo;
+                // len = m_CDNInfo.size();
             }
             else if (targetDevice == BT_STREAM_PEERTYPE_PCDN)
             {
-                tmpIt = m_PCDNInfo.begin();
-                len = m_PCDNInfo.size();
+                tmpIt = m_avaliablePCDN.begin();
+                tmplist = &m_PCDNInfo;
+
+                // len = m_PCDNInfo.size();
             }
             else
             {
@@ -508,7 +553,7 @@ BitTorrentTracker::GenerateResponseForPeer(const BTDict& clientInfo) const
                     nowIt++;
                 }
 
-                BTDict curClient = nowIt->second;
+                BTDict curClient =  tmplist->at(*nowIt);
                 if ((*curClient.find("peer_id")).second != (*(clientInfo.find("peer_id"))).second)
                 {
                     result += "d";
@@ -756,6 +801,10 @@ void
 BitTorrentTracker::AddStreamHash(std::string streamHash)
 {
     std::transform(streamHash.begin(), streamHash.end(), streamHash.begin(), toupper);
+    if (m_cloudInfo.find(streamHash) != m_cloudInfo.end())
+    {
+        return;
+    }
 
     BitTorrentTrackerCloudInfo btci;
     m_cloudInfo.insert(std::pair<std::string, BitTorrentTrackerCloudInfo>(streamHash, btci));
@@ -792,10 +841,14 @@ BitTorrentTracker::AddClient(BTDict& clientInfo)
         if (peer_type == BT_STREAM_PEERTYPE_CDN)
         {
             m_CDNInfo[peer_id] = clientInfo;
+            m_avaliableCDN.insert(peer_id);
         }
         else if (peer_type == BT_STREAM_PEERTYPE_PCDN)
         {
             m_PCDNInfo[peer_id] = clientInfo;
+            m_PCDNBacksource[peer_id] = std::set<std::string>();
+            m_avaliablePCDN.insert(peer_id);
+
         }
         else if (peer_type == BT_STREAM_PEERTYPE_CLIENT)
         {
@@ -841,6 +894,14 @@ BitTorrentTracker::UpdateClient(BTDict& clientInfo)
                 return;
             }
             oldClientInfo = &m_CDNInfo[peer_id];
+            if( lexical_cast<int>(clientInfo.find("Connected")->second) >= lexical_cast<int>(clientInfo.find("ConnectMax")->second) )
+            {
+                m_avaliableCDN.erase(peer_type);
+            }
+            else
+            {
+                m_avaliableCDN.insert(peer_type);
+            }
         }
         else if (peer_type == BT_STREAM_PEERTYPE_PCDN)
         {
@@ -849,6 +910,14 @@ BitTorrentTracker::UpdateClient(BTDict& clientInfo)
                 return;
             }
             oldClientInfo = &m_PCDNInfo[peer_id];
+            if( lexical_cast<int>(clientInfo.find("Connected")->second) >= lexical_cast<int>(clientInfo.find("ConnectMax")->second) )
+            {
+                m_avaliablePCDN.erase(peer_type);
+            }
+            else
+            {
+                m_avaliablePCDN.insert(peer_type);
+            }
             // m_PCDNInfo[peer_id] = clientInfo;
         }
         else if (peer_type == BT_STREAM_PEERTYPE_CLIENT)
@@ -864,6 +933,9 @@ BitTorrentTracker::UpdateClient(BTDict& clientInfo)
         (*oldClientInfo)["uploaded"] = clientInfo["uploaded"];
         (*oldClientInfo)["downloaded"] = clientInfo["downloaded"];
         (*oldClientInfo)["left"] = clientInfo["left"];
+        (*oldClientInfo)["Connected"] = clientInfo["Connected"];
+        (*oldClientInfo)["ConnectMax"] = clientInfo["ConnectMax"];
+        // (*oldClientInfo)["left"] = clientInfo["left"];
         return;
     }
     std::string info_hash = (*(clientInfo.find("info_hash"))).second;
@@ -932,6 +1004,8 @@ BitTorrentTracker::RemoveClient(const BTDict& clientInfo)
                 return;
             }
             m_CDNInfo.erase(peer_id);
+            m_avaliableCDN.erase(peer_id);
+
         }
         else if (peer_type == BT_STREAM_PEERTYPE_PCDN)
         {
@@ -941,6 +1015,9 @@ BitTorrentTracker::RemoveClient(const BTDict& clientInfo)
             }
             // oldClientInfo = &m_PCDNInfo[peer_id];
             m_PCDNInfo.erase(peer_id);
+            m_PCDNBacksource.erase(peer_id);
+            m_avaliablePCDN.erase(peer_id);
+
         }
         else if (peer_type == BT_STREAM_PEERTYPE_CLIENT)
         {
@@ -1007,13 +1084,13 @@ BitTorrentTracker::GetSeedersRandom(const std::string streamHash, int requireNum
     uint32_t len;
     if (targetDevice == BT_STREAM_PEERTYPE_CDN)
     {
-        tmpIt = m_CDNInfo.begin();
-        len = m_CDNInfo.size();
+        // tmpIt = m_CDNInfo.begin();
+        len = m_avaliableCDN.size();
     }
     else if (targetDevice == BT_STREAM_PEERTYPE_PCDN)
     {
-        tmpIt = m_PCDNInfo.begin();
-        len = m_PCDNInfo.size();
+        // tmpIt = m_avaliablePCDN.begin();
+        len = m_avaliablePCDN.size();
     }
     else
     {
@@ -1038,6 +1115,81 @@ BitTorrentTracker::GetSeedersRandom(const std::string streamHash, int requireNum
 
 std::set<uint32_t>
 ns3::bittorrent::BitTorrentTracker::GetSeedersTreeFirst(const std::string streamHash, int requireNum, std::string targetDevice) const
+{
+    std::set<uint32_t> result;
+    std::set<std::string>::const_iterator tmpIt;
+    const BTDoubleDict * tmplist =nullptr;
+    uint32_t len;
+    if (targetDevice == BT_STREAM_PEERTYPE_CDN)
+    {
+        tmpIt = m_avaliableCDN.begin();
+        tmplist = &m_CDNInfo;
+        len = m_avaliableCDN.size();
+    }
+    else if (targetDevice == BT_STREAM_PEERTYPE_PCDN)
+    {
+        tmpIt = m_avaliablePCDN.begin();
+        tmplist = &m_PCDNInfo;
+
+        len = m_avaliablePCDN.size();
+    }
+    else
+    {
+        NS_FATAL_ERROR("CLIENT PART now donot allow to request");
+    }
+
+
+    uint32_t nowpos = 0;
+    auto     nowIt = tmpIt;
+    while(result.size() < requireNum && nowpos < len)
+    {
+        auto backsourceIT = m_PCDNBacksource.find(*nowIt);
+        if(backsourceIT != m_PCDNBacksource.end())
+        {
+            if (backsourceIT->second.contains(streamHash))
+            {
+                result.insert(nowpos + 1);
+                NS_LOG_INFO("Tracker:" << "found a tree node");
+            }
+        }
+
+        // result.insert(nowpos);
+        // if()
+
+        nowIt++;
+        nowpos++;
+    }
+    nowpos = 0;
+    nowIt = tmpIt;
+    std::list<uint32_t> perm = Utilities::GetPermutationP(len, len);
+    for(auto i : perm)
+    {
+        if(result.size() >= requireNum)
+        {
+            break;
+        }
+        result.insert(i);
+    }
+    // while(result.size() < requireNum && nowpos < len)
+    // {
+    //     // auto backsourceIT = m_PCDNBacksource.find(*tmpIt);
+    //     // if(backsourceIT != m_PCDNBacksource.end())
+    //     // {
+    //         // if(backsourceIT->second.contains(streamHash))
+    //     result.insert(nowpos + 1);
+    //     // }
+
+    //     // result.insert(nowpos);
+    //     // if()
+
+    //     nowIt++;
+    //     nowpos++;
+    // }
+    return result;
+}
+
+std::set<uint32_t>
+BitTorrentTracker::GetSeedersOptimal(const std::string streamHash, int requireNum, std::string targetDevice) const
 {
     return std::set<uint32_t>();
 }

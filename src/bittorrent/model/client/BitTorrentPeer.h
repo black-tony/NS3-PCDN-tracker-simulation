@@ -27,6 +27,7 @@
 #include "ns3/ipv4-address.h"
 #include "ns3/nstime.h"
 #include "ns3/socket.h"
+#include <ns3/traced-callback.h>
 
 #include <list>
 #include <stdexcept>
@@ -152,11 +153,14 @@ class Peer : public Object
     uint64_t m_downloadHistoryReSetTime[BT_PEER_DOWNLOADUPLOADRATE_ROLLING_AVERAGE_SECONDS];
     uint64_t m_uploadHistory[BT_PEER_DOWNLOADUPLOADRATE_ROLLING_AVERAGE_SECONDS];
     uint64_t m_uploadHistoryReSetTime[BT_PEER_DOWNLOADUPLOADRATE_ROLLING_AVERAGE_SECONDS];
+    TracedCallback<Ptr<const Packet>, std::string , bool > m_txTrace;
 
     // Constructors etc.
   public:
     Peer(Ptr<BitTorrentClient> myClient);
     virtual ~Peer();
+
+    // static TypeId GetTypeId();
 
     // Interaction methods
   public:

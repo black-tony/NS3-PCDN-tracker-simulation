@@ -126,6 +126,7 @@ private:
 
   bool                       m_trackerAdded;               // Whether the tracker was already added (not possible again)
   bool                       m_randomSeedSet;              // Whether the random seed was already set (not possible again)
+  std::vector<std::string> m_streamHashDefault;
 
 // Constructors etc. (singleton pattern)
 private:

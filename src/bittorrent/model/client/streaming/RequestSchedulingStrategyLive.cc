@@ -56,6 +56,10 @@ RequestSchedulingStrategyLive::DoInitialize()
 void
 RequestSchedulingStrategyLive::ProcessStreamBufferReadyEvent(std::string streamHash)
 {
+    if (m_myClient->GetClientType() == BT_STREAM_PEERTYPE_CLIENT)
+    {
+        return;
+    }
     int peernum = 0;
     for (auto it = m_myClient->GetSubscriptionListIterator(streamHash); it != m_myClient->GetSubscriptionListEnd(streamHash); it++)
     {

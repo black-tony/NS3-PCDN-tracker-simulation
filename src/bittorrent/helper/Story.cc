@@ -42,6 +42,7 @@
 #include "ns3/rng-seed-manager.h"
 #include "ns3/simulator.h"
 #include "ns3/uinteger.h"
+#include "ns3/sha1.h"
 
 #include <cmath>
 #include <cstdarg>
@@ -143,6 +144,17 @@ Story::Story()
     m_otherNodeCount = 0;
     m_loggingToFile = false;
     m_checkData = false;
+    unsigned char newSHA[20];
+    char SHAhexstring[41];
+    for(int i = 0; i < BT_STREAM_DEFAULT_STREAMHASH_CNT; i++)
+    {
+        std::stringstream ss;
+        ss << i;
+        sha1::calc(ss.str().c_str(), ss.str().size(), newSHA);
+        sha1::toHexString(newSHA, SHAhexstring);
+
+        m_streamHashDefault.emplace_back(SHAhexstring);
+    }
 }
 
 Story::~Story()
@@ -726,7 +738,12 @@ Story::ReadAndScheduleStory(std::string filePath, uint32_t simulationDuration)
                 {
                     for (NodeContainer::Iterator it = affectedNodes.Begin(); it != affectedNodes.End(); ++it)
                     {
-                        dynamic_cast<BitTorrentVideoClient*>(PeekPointer((*it)->GetApplication(0)))->SetStartTime(time);
+#ifdef NS3_MPI
+                        if (PeekPointer(*it)->GetSystemId() == MpiInterface::GetSystemId())
+#endif
+                        {
+                            dynamic_cast<BitTorrentVideoClient*>(PeekPointer((*it)->GetApplication(0)))->SetStartTime(time);
+                        }
                     }
                     // SCHEDULE_CHAPTER_NOARGS(&BitTorrentVideoClient::StartApplication, BitTorrentVideoClient)
                 }
@@ -734,7 +751,12 @@ Story::ReadAndScheduleStory(std::string filePath, uint32_t simulationDuration)
                 {
                     for (NodeContainer::Iterator it = affectedNodes.Begin(); it != affectedNodes.End(); ++it)
                     {
-                        dynamic_cast<BitTorrentTracker*>(PeekPointer((*it)->GetApplication(0)))->SetStartTime(time);
+#ifdef NS3_MPI
+                        if (PeekPointer(*it)->GetSystemId() == MpiInterface::GetSystemId())
+#endif
+                        {
+                            dynamic_cast<BitTorrentTracker*>(PeekPointer((*it)->GetApplication(0)))->SetStartTime(time);
+                        }
                     }
                     // SCHEDULE_CHAPTER_NOARGS(&BitTorrentTracker::StartApplication, BitTorrentTracker)
                 }
@@ -1093,7 +1115,9 @@ Story::ReadAndScheduleStory(std::string filePath, uint32_t simulationDuration)
                             buffer = lexical_cast<std::string>(uv->GetValue(0, 1));
 
                             if (!lineBuffer.eof())
+                            {
                                 lineBuffer >> buffer;
+                            }
 
                             SCHEDULE_CHAPTER(&BitTorrentVideoClient::SetInitialBitfield, BitTorrentVideoClient, "random " + buffer)
 
@@ -1269,6 +1293,18 @@ Story::ReadAndScheduleStory(std::string filePath, uint32_t simulationDuration)
                 {
                     lineBuffer >> buffer;
                     CALL_FUNCTION(SetClientType, BitTorrentVideoClient, buffer)
+
+                }
+                else if (buffer == "streamhash")
+                {
+                    lineBuffer >> buffer;
+                    if(buffer.length() < 40)
+                    {
+                        int index = lexical_cast<int>(buffer);
+                        buffer = m_streamHashDefault[std::min(index, (int)m_streamHashDefault.size() - 1)];
+                    }
+                    CALL_FUNCTION(SetStreamHash, BitTorrentVideoClient, buffer)
+                    // CALL_FUNCTION(SetStreamHash, BitTorrentVideoClient, buffer)
 
                 }
                 else
@@ -1520,6 +1556,18 @@ Story::ReadAndScheduleStory(std::string filePath, uint32_t simulationDuration)
                 {
                     lineBuffer >> buffer;
                     SCHEDULE_CHAPTER(&BitTorrentTracker::SetSeederStrategy, BitTorrentTracker, buffer);
+                }
+                else if(buffer == "streamhash")
+                {
+                    lineBuffer >> buffer;
+                    if(buffer.length() < 40)
+                    {
+                        int index = lexical_cast<int>(buffer);
+                        buffer = m_streamHashDefault[std::min(index, (int)m_streamHashDefault.size() - 1)];
+                    }
+                    SCHEDULE_CHAPTER(&BitTorrentTracker::AddStreamHash, BitTorrentTracker, buffer);
+
+                    // CALL_FUNCTION(AddStreamHash, BitTorrentTracker, buffer)
                 }
                 else
                 {

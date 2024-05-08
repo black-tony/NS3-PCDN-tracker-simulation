@@ -33,6 +33,7 @@
 #define BT_STREAM_PEERTYPE_PCDN "PCDN"
 #define BT_STREAM_PEERTYPE_CLIENT "CLIENT"
 #define BT_STREAM_DEFAULT_SEGMENT_SIZE 500 * 1000 / 8 // 0.5Mb/s = 500Kb = 500 * 1000b = 500*1000/8 Byte
+#define BT_STREAM_DEFAULT_STREAMHASH_CNT 20
 #define BT_STREAM_SUBSCRIBE_LENGTH 41
 #define BT_PEER_SOCKET_TRANSMIT_BUFFER_SIZE 65536 // In bytes; per client connection
 #define BT_PEER_SOCKET_RECEIVE_BUFFER_SIZE 65536 // In bytes; per client connection 125000000 = Maximum bytes in Gigabit Ethernet per second

@@ -527,10 +527,14 @@ VideoStreamServer::SendCallback(Ptr<Socket> socket, uint32_t availableBufferSize
 void
 VideoStreamServer::SetUsingPCDN(bool isUsePCDN)
 {
-    if(isUsePCDN)
+    if (isUsePCDN)
+    {
         m_usingP2P = 1;
+    }
     else
+    {
         m_usingP2P = 0;
+    }
     return;
 }
 

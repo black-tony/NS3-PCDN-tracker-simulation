@@ -53,7 +53,7 @@ NS_OBJECT_ENSURE_REGISTERED(PeerConnectorStrategyBase);
 PeerConnectorStrategyBase::PeerConnectorStrategyBase(Ptr<BitTorrentClient> myClient)
     : AbstractStrategy(myClient)
 {
-    m_periodicInterval = Seconds(10);
+    m_periodicInterval = Seconds(2);
     m_reannouncementInterval = Seconds(60);
     AddConnection(m_myClient->GetIp().Get());
 

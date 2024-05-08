@@ -87,6 +87,8 @@ PeerConnectorStrategyLive::ProcessPeriodicReannouncements()
         additionalParameters["StreamHash"] = m_myClient->GetStreamHash();
         additionalParameters["LiveStreaming"] = "1";
 
+    additionalParameters["Connected"] = lexical_cast<std::string>(m_myClient->GetConnectedPeerCount());
+    additionalParameters["ConnectMax"] =lexical_cast<std::string>( m_myClient->GetMaxPeers());
         // The last parameter in here is set to "false" so more important updates can override this one
         ContactTracker(PeerConnectorStrategyBase::REGULAR_UPDATE, 1, additionalParameters, false);
     }
@@ -104,6 +106,8 @@ PeerConnectorStrategyLive::ConnectToCloud()
     additionalParameters["PeerType"] = m_myClient->GetClientType();
     additionalParameters["StreamHash"] = m_myClient->GetStreamHash();
     additionalParameters["LiveStreaming"] = "1";
+    additionalParameters["Connected"] = lexical_cast<std::string>(m_myClient->GetConnectedPeerCount());
+    additionalParameters["ConnectMax"] = lexical_cast<std::string>(m_myClient->GetMaxPeers());
     // num want should always be one
     ContactTracker(PeerConnectorStrategyBase::STARTED, 1, additionalParameters, true);
     m_myClient->SetConnectionToCloudSuspended(false);
@@ -119,6 +123,9 @@ PeerConnectorStrategyLive::GetSeeder(std::string streamHash)
     additionalParameters["PeerType"] = m_myClient->GetClientType();
     additionalParameters["LiveStreaming"] = "1";
     additionalParameters["StreamHash"] = streamHash;
+
+    additionalParameters["Connected"] = lexical_cast<std::string>(m_myClient->GetConnectedPeerCount());
+    additionalParameters["ConnectMax"] = lexical_cast<std::string>(m_myClient->GetMaxPeers());
     ContactTracker(PeerConnectorStrategyBase::GET_SEEDER, 1, additionalParameters, true);
 }
 
@@ -596,6 +603,8 @@ PeerConnectorStrategyLive::DisconnectFromCloud()
     std::map<std::string, std::string> additionalParameters;
     additionalParameters["PeerType"] = m_myClient->GetClientType();
     additionalParameters["StreamHash"] = m_myClient->GetStreamHash();
+    additionalParameters["Connected"] = lexical_cast<std::string>(m_myClient->GetConnectedPeerCount());
+    additionalParameters["ConnectMax"] =lexical_cast<std::string>(m_myClient->GetMaxPeers());
     additionalParameters["LiveStreaming"] = "1";
     ContactTracker(PeerConnectorStrategyBase::STOPPED, 0, additionalParameters, true);
 

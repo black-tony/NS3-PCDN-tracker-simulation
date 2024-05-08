@@ -97,7 +97,11 @@ class BitTorrentTracker : public Application
     std::map<std::string, BitTorrentTrackerCloudInfo> m_cloudInfo; // The clouds that the tracker serves; info hash as index
                                                                    /// @endcond HIDDEN
     std::map<std::string, BTDict> m_PCDNInfo;
+    std::set<std::string> m_avaliablePCDN;
+    std::set<std::string> m_avaliableCDN;
+    std::map<std::string, std::set<std::string>> m_PCDNBacksource;
     std::map<std::string, BTDict> m_CDNInfo;
+    // std::map<std::string, std::set<std::string>> m_CDNBacksource;
     
   protected:
     // Event listeners and callbacks
@@ -147,6 +151,7 @@ class BitTorrentTracker : public Application
      * @param announcePath The announce path to use.
      */
     void SetAnnouncePath(std::string announcePath);
+    void UpdateClientBacksource(BTDict clientinfo);
 
     std::string GetScrapePath() const;
 
@@ -303,6 +308,7 @@ class BitTorrentTracker : public Application
 
     std::set<uint32_t> GetSeedersRandom(const std::string streamHash, int requireNum, std::string targetDevice) const;
     std::set<uint32_t> GetSeedersTreeFirst(const std::string streamHash, int requireNum, std::string targetDevice) const;
+    std::set<uint32_t> GetSeedersOptimal(const std::string streamHash, int requireNum, std::string targetDevice) const;
     // std::set<BTDoubleDict::const_iterator> GetSeeders(const std::string streamHash, int requireNum);
 };
 

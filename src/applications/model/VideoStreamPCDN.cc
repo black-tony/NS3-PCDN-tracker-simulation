@@ -571,8 +571,10 @@ VideoStreamPCDN::ReceivedDataCallback(Ptr<Socket> socket)
             else
             {
                 auto it = m_forwardTable.find(m_videoRequested);
-                if(it == m_forwardTable.end())
+                if (it == m_forwardTable.end())
+                {
                     m_forwardTable[m_videoRequested] = std::set<Ptr<Socket>>();
+                }
                 m_forwardTable[m_videoRequested].insert(socket);
                 Simulator::ScheduleNow(&VideoStreamPCDN::ClientRequestMainObject, this, m_clientSocket,  m_videoRequested);
             }
@@ -1213,8 +1215,10 @@ VideoStreamPCDN::ClientRequestMainObject(Ptr<Socket> socket, uint32_t videoNumbe
     {
         if (m_cachedVideoNumber.find(videoNumber) == m_cachedVideoNumber.end())
         {
-            if((int)m_cachedVideoNumber.size() >= m_maxVideoCacheNumber)
+            if ((int)m_cachedVideoNumber.size() >= m_maxVideoCacheNumber)
+            {
                 videoNak = true;
+            }
             else
             {
                 m_cachedVideoNumber.insert(videoNumber);

@@ -96,9 +96,14 @@ BitTorrentClient::~BitTorrentClient()
 TypeId
 BitTorrentClient::GetTypeId()
 {
-    static TypeId tid = TypeId("ns3::BitTorrentClient").SetParent<Application>().AddConstructor<BitTorrentClient>();
+    static TypeId tid =
+        TypeId("ns3::BitTorrentClient")
+            .SetParent<Application>()
+            .AddConstructor<BitTorrentClient>();
+            // .AddTraceSource("Tx", "A packet has been sent.", MakeTraceSourceAccessor(&BitTorrentClient::m_txTrace), "ns3::Packet::TracedCallback");
     return tid;
 }
+
 
 void
 BitTorrentClient::StopApplication()
@@ -673,6 +678,7 @@ BitTorrentClient::RegisterPeer(Ptr<Peer> peer)
     m_peerList.insert(std::make_pair(peer, std::set<std::string>()));
     // m_peerList[''];
 }
+
 std::string
 BitTorrentClient::GetSelfRepresent() const
 {
@@ -680,6 +686,7 @@ BitTorrentClient::GetSelfRepresent() const
     ss << "(" << GetClientType() << " : " << GetNode()->GetId() << " @ " << GetIp() << ")";
     return ss.str();
 }
+
 void
 BitTorrentClient::UnregisterPeer(Ptr<Peer> peer)
 {
@@ -688,17 +695,17 @@ BitTorrentClient::UnregisterPeer(Ptr<Peer> peer)
     {
         return;
     }
-    for(const auto& streamHash : it->second)
+    for (const auto& streamHash : it->second)
     {
-        //unregister all the peers
+        // unregister all the peers
         auto hashToStreamIt = m_subscriptionList.find(streamHash);
-        if(hashToStreamIt != m_subscriptionList.end())
+        if (hashToStreamIt != m_subscriptionList.end())
         {
             hashToStreamIt->second.erase(peer);
         }
 
         hashToStreamIt = m_upperStreamList.find(streamHash);
-        if(hashToStreamIt != m_upperStreamList.end())
+        if (hashToStreamIt != m_upperStreamList.end())
         {
             hashToStreamIt->second.erase(peer);
         }
@@ -859,8 +866,10 @@ BitTorrentClient::StreamBufferReady(std::string streamHash)
     {
         (*iter)(streamHash);
     }
-    if(m_clientType == BT_STREAM_PEERTYPE_CDN)
+    if (m_clientType == BT_STREAM_PEERTYPE_CDN)
+    {
         m_dataAvailableTimer[streamHash] = Simulator::Schedule(Seconds(1), &BitTorrentClient::StreamBufferReady, this, streamHash);
+    }
 }
 
 void

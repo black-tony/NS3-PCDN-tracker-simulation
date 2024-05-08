@@ -233,6 +233,13 @@ class BitTorrentClient : public Application
     Callback<void, Ptr<Peer>> m_disconnectPeer;    // To terminate the connection to a certain peer (e.g., if it is stale)
     Callback<uint16_t> m_peerCount;    // To determine the sum of open and pending connections (more reliable than the size of the peer list)
     // Callback<std::string> m_peerCount; // To determine the sum of open and pending connections (more reliable than the size of the peer list)
+public:
+    Callback<void, Ptr<const Packet>, std::string , bool > m_txTrace;
+    void setTxTrace(Callback<void, Ptr<const Packet>, std::string , bool > eventCallback)
+    {
+        m_txTrace = eventCallback;
+    }
+
 
   private:
     // TODO: Fields to rework

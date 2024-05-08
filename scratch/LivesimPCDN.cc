@@ -47,7 +47,7 @@
 using namespace ns3;
 using namespace bittorrent;
 
-NS_LOG_COMPONENT_DEFINE("BitTorrentVoDSimulation");
+NS_LOG_COMPONENT_DEFINE("BitTorrentLiveSimulation");
 
 void
 ShowTimePeriodic()
@@ -55,22 +55,41 @@ ShowTimePeriodic()
     std::cout << "It is now " << Simulator::Now().GetSeconds() << "s (" << GlobalMetricsGatherer::GetWallclockTime() << ")" << std::endl;
     Simulator::Schedule(Seconds(1.0), ShowTimePeriodic);
 }
+void
+ServerTx(Ptr<const Packet> packet, std::string clienttype, bool output)
+{
+    static std::map<std::string, uint32_t> record;
+    // std::cout << "it.first" << "\t" << "it.second" << std::endl;
 
+    if(output)
+    {
+        for (const auto& it : record)
+        {
+            std::cout << it.first << "\t" << 1.0 * it.second / 1024 / 1024 << "MB" << std::endl;
+        }
+        return;
+    }
+    if (record.find(clienttype) == record.end())
+    {
+        record[clienttype] = 0;
+    }
+    record[clienttype] += packet->GetSize();
+}
 int
 main(int argc, char* argv[])
 {
     // LogComponentEnableAll (LOG_PREFIX_FUNC);
 
     // LogComponentEnable("BitTorrentHttpClient", LOG_LEVEL_ALL);
-    LogComponentEnable("bittorrent::BitTorrentClient", LOG_LEVEL_INFO);
-    LogComponentEnable("bittorrent::RequestSchedulingStrategyLive", LOG_LEVEL_INFO);
+    // LogComponentEnable("bittorrent::BitTorrentClient", LOG_LEVEL_INFO);
+    // LogComponentEnable("bittorrent::RequestSchedulingStrategyLive", LOG_LEVEL_INFO);
     // LogComponentEnable("BitTorrentTracker", LOG_LEVEL_ALL);
     
     // LogComponentEnable ("TcpSocketBase", LOG_LEVEL_ALL);
 
     // LogComponentEnable ("bittorrent::PartSelectionStrategyBase", LOG_LEVEL_ALL);
     // LogComponentEnable("bittorrent::PeerConnectorStrategyBase", LOG_LEVEL_ALL);
-    LogComponentEnable("bittorrent::PeerConnectorStrategyLive", LOG_LEVEL_INFO);
+    // LogComponentEnable("bittorrent::PeerConnectorStrategyLive", LOG_LEVEL_INFO);
     LogComponentEnable("bittorrent::VODSimBriteTopologyHelper", LOG_LEVEL_ALL);
 
 #ifdef NS3_MPI
@@ -90,6 +109,7 @@ main(int argc, char* argv[])
 
     std::string storyFileName = "simulation";
     std::string replacements = "";
+    std::string txCountFilename = "output/MytestCountsMesh.txt";
     uint32_t simulationDuration = 25000;
     bool enableLogging = false;
     std::string comment;
@@ -156,6 +176,8 @@ main(int argc, char* argv[])
             if (PeekPointer(*it)->GetNApplications() > 0)
             { // We assume the first application to be a BitTorrentClient here
                 dynamic_cast<BitTorrentVideoClient*>(PeekPointer((*it)->GetApplication(0)))->SetTorrent(PointerValue(sharedTorrent));
+                PeekPointer((*it)->GetApplication(0))->GetObject<BitTorrentClient>()->setTxTrace( MakeCallback(&ServerTx));
+                
             }
         }
     }
@@ -172,22 +194,22 @@ main(int argc, char* argv[])
     gatherer->SetStopFraction(-1.0, 1.0);
     // <-- Emulation setup (part 2)
 #endif
-    std::ofstream fout("output/NodeDistribution.txt");
-    for (auto it = btNodes.Begin(); it != btNodes.End(); it++)
-    {
-        fout << dynamic_cast<BitTorrentVideoClient*>(PeekPointer((*it)->GetApplication(0)))->GetNode()->GetId() << "\t"
-             << dynamic_cast<BitTorrentVideoClient*>(PeekPointer((*it)->GetApplication(0)))->GetClientType() << std::endl;
-    }
-    fout.close();
+    // std::ofstream fout("output/NodeDistribution.txt");
+    // for (auto it = btNodes.Begin(); it != btNodes.End(); it++)
+    // {
+    //     fout << dynamic_cast<BitTorrentVideoClient*>(PeekPointer((*it)->GetApplication(0)))->GetNode()->GetId() << "\t"
+    //          << dynamic_cast<BitTorrentVideoClient*>(PeekPointer((*it)->GetApplication(0)))->GetClientType() << std::endl;
+    // }
+    // fout.close();
     std::string probeType;
     std::string tracePath;
     // Ipv4L3Protocol
     probeType = "ns3::Ipv4PacketProbe";
     tracePath = "/NodeList/*/$ns3::Ipv4L3Protocol/Tx";
-    FileHelper fileHelper;
+    // FileHelper fileHelper;
 
     // Configure the file to be written, and the formatting of output data.
-    fileHelper.ConfigureFile("output/MytestCountsMesh", FileAggregator::TAB_SEPARATED);
+    // fileHelper.ConfigureFile("output/MytestCountsMesh", FileAggregator::TAB_SEPARATED);
     // timeCounter.ConfigureFile("MytestCountsMeshTime", FileAggregator::TAB_SEPARATED);
     // Set the labels for this formatted output file.
     // fileHelper.Set2dFormat("Time (Seconds) = %.3e\tPacket Byte Count = %.0f");
@@ -195,7 +217,7 @@ main(int argc, char* argv[])
 
     // Specify the probe type, trace source path (in configuration namespace), and
     // probe output trace source ("OutputBytes") to write.
-    fileHelper.WriteProbe(probeType, tracePath, "OutputBytes");
+    // fileHelper.WriteProbe(probeType, tracePath, "OutputBytes");
     // topologyHelper.WriteLastTopologyToGraphVizFile (story->GetSimulationId () + ".dot");
     // Ptr<OutputStreamWrapper> routingStream =
     //           Create<OutputStreamWrapper>("nix-simple-ipv4.routes", std::ios::out);
@@ -206,6 +228,17 @@ main(int argc, char* argv[])
     gatherer->WriteToFile("simulation-started", GlobalMetricsGatherer::GetWallclockTime(), false);
     Simulator::Run();
     Simulator::Destroy();
+    // int save_stdout_no = dup(fileno(stdout));
+    // std::fflush(stdout);
+    // std::freopen(txCountFilename.c_str(), "w", stdout);
+    ServerTx(nullptr, "", true);
+    // std::fflush();
+    // std::fflush(stdout);
+    // dup2(save_stdout_no ,fileno(stdout));
+    // close(save_stdout_no);
+    // std::freopen(nullptr, "w", stdout);
 
     std::cout << GlobalMetricsGatherer::GetWallclockTime() << ": BitTorent Video-on-Demand simulation finished successfully :=)" << std::endl;
+    MpiInterface::Disable();
+    return 0;
 }

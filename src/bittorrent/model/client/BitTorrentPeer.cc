@@ -105,6 +105,7 @@ Peer::~Peer()
     delete[] m_pieceCorruptionMap;
 }
 
+
 void
 Peer::ConnectToPeer(Ipv4Address address, uint16_t port)
 {
@@ -259,8 +260,8 @@ Peer::RequestPiece(uint32_t pieceIndex, uint32_t blockOffSet, uint32_t blockLeng
     // Step 6b: Indicate that this message is NOT a PIECE message (which is handled differently)
     m_sendQueuePieceMessageIndicators.push_back(false);
 
-    NS_LOG_INFO("Peer: client" << m_myClient->GetSelfRepresent() << " Enqueueing request to " << GetRemoteIp() << "; for " << reqMsg.GetPieceIndex() << "@" << reqMsg.GetBlockOffset() << "->"
-                                               << reqMsg.GetBlockOffset() + reqMsg.GetBlockLength() << ".");
+    NS_LOG_INFO("Peer: client" << m_myClient->GetSelfRepresent() << " Enqueueing request to " << GetRemoteIp() << "; for " << reqMsg.GetPieceIndex()
+                               << "@" << reqMsg.GetBlockOffset() << "->" << reqMsg.GetBlockOffset() + reqMsg.GetBlockLength() << ".");
 
     // Step 7: Send out messages in the send queue
     HandleSend(m_peerSocket, m_peerSocket->GetTxAvailable());
@@ -720,8 +721,9 @@ Peer::HandleCancel(Ptr<Packet> packet)
     }
     else
     {
-        NS_LOG_INFO("Peer: client" << m_myClient->GetSelfRepresent() << " Received CANCEL for non-existing prior REQUEST: " << cancelMsg.GetPieceIndex() << "@" << cancelMsg.GetBlockOffset() << "->"
-                                                                             << cancelMsg.GetBlockOffset() + cancelMsg.GetBlockLength() << ".");
+        NS_LOG_INFO("Peer: client" << m_myClient->GetSelfRepresent()
+                                   << " Received CANCEL for non-existing prior REQUEST: " << cancelMsg.GetPieceIndex() << "@"
+                                   << cancelMsg.GetBlockOffset() << "->" << cancelMsg.GetBlockOffset() + cancelMsg.GetBlockLength() << ".");
     }
 }
 
@@ -975,7 +977,8 @@ Peer::HandleRead(Ptr<Socket> socket)
                     m_packetBuffer->PeekHeader(bitfieldMsg);
                     if (m_lengthHeader.GetPacketLength() - 1 != m_myClient->GetTorrent()->GetBitfieldSize())
                     {
-                        NS_LOG_INFO("Peer: client" << m_myClient->GetSelfRepresent() << " Received a bitfield of wrong length from " << GetRemoteIp() << ".");
+                        NS_LOG_INFO("Peer: client" << m_myClient->GetSelfRepresent() << " Received a bitfield of wrong length from " << GetRemoteIp()
+                                                   << ".");
                         return;
                     }
                     else
@@ -1087,6 +1090,7 @@ Peer::HandleSend(Ptr<Socket> socket, uint32_t bytesFree)
                 m_blockSendDataLeft -= bytesToSend;
 
                 // Step 4: Send out the data
+                m_myClient->m_txTrace(nextPart, m_myClient->GetClientType(), false);
                 m_peerSocket->Send(nextPart);
                 m_totalBytesUploaded += bytesToSend;
 
@@ -1097,10 +1101,9 @@ Peer::HandleSend(Ptr<Socket> socket, uint32_t bytesFree)
                  */
                 if (m_blockSendDataLeft <= 0)
                 {
-                    NS_LOG_INFO("Peer: client" << m_myClient->GetSelfRepresent() << " Finished upload of request "
-                                << "Segment"
-                                << " to " << GetRemoteIp() << "; free bytes left in tx buffer: " << m_peerSocket->GetTxAvailable()
-                                << "; requests left: " << m_requestQueue.size() - 1 << ".");
+                    NS_LOG_INFO("Peer: client" << m_myClient->GetSelfRepresent() << " Finished upload of request " << "Segment" << " to "
+                                               << GetRemoteIp() << "; free bytes left in tx buffer: " << m_peerSocket->GetTxAvailable()
+                                               << "; requests left: " << m_requestQueue.size() - 1 << ".");
 
                     m_blockSendingActive = false;
                     // No modulde call this e
@@ -1129,6 +1132,8 @@ Peer::HandleSend(Ptr<Socket> socket, uint32_t bytesFree)
                 m_blockSendDataLeft -= bytesToSend;
 
                 // Step 4: Send out the data
+                m_myClient->m_txTrace(nextPart, m_myClient->GetClientType(), false);
+
                 m_peerSocket->Send(nextPart);
                 m_totalBytesUploaded += bytesToSend;
 
@@ -1192,12 +1197,15 @@ Peer::HandleSend(Ptr<Socket> socket, uint32_t bytesFree)
                         m_totalBytesUploaded += m_blockSendDataLeft;
 
                         // Step 4: Send out the packet
+                        m_myClient->m_txTrace(packet, m_myClient->GetClientType(), false);
+
                         m_peerSocket->Send(packet);
 
                         // Step 5: Start another iteration so the piece data can be appended directly
                         nextIteration = true;
 
-                        NS_LOG_INFO("Peer: client" << m_myClient->GetSelfRepresent() << " Starting to upload to " << GetRemoteIp() << "; streamHash " << subMsg.GetStreamHash() << ".");
+                        NS_LOG_INFO("Peer: client" << m_myClient->GetSelfRepresent() << " Starting to upload to " << GetRemoteIp() << "; streamHash "
+                                                   << subMsg.GetStreamHash() << ".");
                     }
                     else
                     {
@@ -1230,14 +1238,16 @@ Peer::HandleSend(Ptr<Socket> socket, uint32_t bytesFree)
                         m_totalBytesUploaded += m_blockSendDataLeft;
 
                         // Step 4: Send out the packet
+                        m_myClient->m_txTrace(packet, m_myClient->GetClientType(), false);
+
                         m_peerSocket->Send(packet);
 
                         // Step 5: Start another iteration so the piece data can be appended directly
                         nextIteration = true;
 
-                        NS_LOG_INFO("Peer: client" << m_myClient->GetSelfRepresent() << " Starting to upload to " << GetRemoteIp() << "; piece " << pieceMsg.GetIndex() << "@"
-                                                                   << m_requestQueue.front().blockOffSet << "->"
-                                                                   << m_requestQueue.front().blockOffSet + m_requestQueue.front().blockLength << ".");
+                        NS_LOG_INFO("Peer: client" << m_myClient->GetSelfRepresent() << " Starting to upload to " << GetRemoteIp() << "; piece "
+                                                   << pieceMsg.GetIndex() << "@" << m_requestQueue.front().blockOffSet << "->"
+                                                   << m_requestQueue.front().blockOffSet + m_requestQueue.front().blockLength << ".");
                     }
                     else
                     {
@@ -1253,6 +1263,8 @@ Peer::HandleSend(Ptr<Socket> socket, uint32_t bytesFree)
                     Ptr<Packet> packet = m_sendQueue.front();
 
                     // Step 2: Send the packet
+                    m_myClient->m_txTrace(packet, m_myClient->GetClientType(), false);
+
                     m_peerSocket->Send(packet);
 
                     // Step 3: Remove the packet data from the internal queue

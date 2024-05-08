@@ -12,14 +12,19 @@
 //
 //
 0h0m0s: topology add clients count 1 type point-to-point uplink 100Mbps downlink 100Mbps delay 0ms
-0h0m0s: all clients join group CDN
-0h0m0s: topology add clients count 2 type point-to-point uplink 50Mbps downlink 100Mbps delay 0ms
-0h0m0s: all clients join group PCDN
-0h0m0s: group CDN leave group PCDN
-0h0m0s: topology add clients count 4 type point-to-point uplink 448kbps downlink 10Mbps delay 0ms
-0h0m0s: all clients join group leechers
-0h0m0s: group PCDN leave group leechers
-0h0m0s: group CDN leave group leechers
+0h0m0s: client 1 join group CDN
+0h0m0s: topology add clients count 4 type point-to-point uplink 50Mbps downlink 100Mbps delay 0ms
+0h0m0s: clients 2 to 5 join group PCDN
+//0h0m0s: group CDN leave group PCDN
+0h0m0s: topology add clients count 20 type point-to-point uplink 448kbps downlink 10Mbps delay 0ms
+0h0m0s: clients 6 to 25 join group leechers
+0h0m0s: clients 6 to 11 set streamhash 2
+0h0m0s: clients 12 to 25 set streamhash 4
+0h0m0s: tracker set streamhash 2
+0h0m0s: tracker set streamhash 4
+
+//0h0m0s: group PCDN leave group leechers
+//0h0m0s: group CDN leave group leechers
 //
 //
 0h0m0s: group PCDN set initial bitfield full
@@ -55,12 +60,12 @@
 //
 //
 0h0m0s: tracker set update interval 0h0m60s
-0h0m0s: tracker set strategy random
+0h0m0s: tracker set strategy treeFirst
 //
 //
 0h0m0s: group PCDN init
 0h0m0s: group CDN init
 0h0m5s: group leechers init
 //
-0h0m16s: client 6 leave cloud
-0h0m30s: client 6 rejoin cloud
+// 0h0m16s: client 6 leave cloud
+// 0h0m26s: client 6 rejoin cloud
