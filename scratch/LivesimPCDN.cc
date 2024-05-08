@@ -55,13 +55,14 @@ ShowTimePeriodic()
     std::cout << "It is now " << Simulator::Now().GetSeconds() << "s (" << GlobalMetricsGatherer::GetWallclockTime() << ")" << std::endl;
     Simulator::Schedule(Seconds(1.0), ShowTimePeriodic);
 }
+
 void
 ServerTx(Ptr<const Packet> packet, std::string clienttype, bool output)
 {
     static std::map<std::string, uint32_t> record;
     // std::cout << "it.first" << "\t" << "it.second" << std::endl;
 
-    if(output)
+    if (output)
     {
         for (const auto& it : record)
         {
@@ -75,6 +76,7 @@ ServerTx(Ptr<const Packet> packet, std::string clienttype, bool output)
     }
     record[clienttype] += packet->GetSize();
 }
+
 int
 main(int argc, char* argv[])
 {
@@ -84,7 +86,7 @@ main(int argc, char* argv[])
     // LogComponentEnable("bittorrent::BitTorrentClient", LOG_LEVEL_INFO);
     // LogComponentEnable("bittorrent::RequestSchedulingStrategyLive", LOG_LEVEL_INFO);
     // LogComponentEnable("BitTorrentTracker", LOG_LEVEL_ALL);
-    
+
     // LogComponentEnable ("TcpSocketBase", LOG_LEVEL_ALL);
 
     // LogComponentEnable ("bittorrent::PartSelectionStrategyBase", LOG_LEVEL_ALL);
@@ -109,7 +111,6 @@ main(int argc, char* argv[])
 
     std::string storyFileName = "simulation";
     std::string replacements = "";
-    std::string txCountFilename = "output/MytestCountsMesh.txt";
     uint32_t simulationDuration = 25000;
     bool enableLogging = false;
     std::string comment;
@@ -176,8 +177,7 @@ main(int argc, char* argv[])
             if (PeekPointer(*it)->GetNApplications() > 0)
             { // We assume the first application to be a BitTorrentClient here
                 dynamic_cast<BitTorrentVideoClient*>(PeekPointer((*it)->GetApplication(0)))->SetTorrent(PointerValue(sharedTorrent));
-                PeekPointer((*it)->GetApplication(0))->GetObject<BitTorrentClient>()->setTxTrace( MakeCallback(&ServerTx));
-                
+                PeekPointer((*it)->GetApplication(0))->GetObject<BitTorrentClient>()->setTxTrace(MakeCallback(&ServerTx));
             }
         }
     }
@@ -194,13 +194,21 @@ main(int argc, char* argv[])
     gatherer->SetStopFraction(-1.0, 1.0);
     // <-- Emulation setup (part 2)
 #endif
-    // std::ofstream fout("output/NodeDistribution.txt");
-    // for (auto it = btNodes.Begin(); it != btNodes.End(); it++)
-    // {
-    //     fout << dynamic_cast<BitTorrentVideoClient*>(PeekPointer((*it)->GetApplication(0)))->GetNode()->GetId() << "\t"
-    //          << dynamic_cast<BitTorrentVideoClient*>(PeekPointer((*it)->GetApplication(0)))->GetClientType() << std::endl;
-    // }
-    // fout.close();
+    std::ofstream fout("output/NodeDistribution-part-" + lexical_cast<std::string>(MpiInterface::GetSystemId()) + ".txt");
+    for (auto it = btNodes.Begin(); it != btNodes.End(); it++)
+    {
+#ifdef NS3_MPI
+        if (PeekPointer(*it)->GetSystemId() == MpiInterface::GetSystemId())
+#endif
+        {
+            if (PeekPointer(*it)->GetNApplications() > 0)
+            {
+                fout << dynamic_cast<BitTorrentVideoClient*>(PeekPointer((*it)->GetApplication(0)))->GetNode()->GetId() << "\t"
+                     << dynamic_cast<BitTorrentVideoClient*>(PeekPointer((*it)->GetApplication(0)))->GetClientType() << std::endl;
+            }
+        }
+    }
+    fout.close();
     std::string probeType;
     std::string tracePath;
     // Ipv4L3Protocol
@@ -228,15 +236,16 @@ main(int argc, char* argv[])
     gatherer->WriteToFile("simulation-started", GlobalMetricsGatherer::GetWallclockTime(), false);
     Simulator::Run();
     Simulator::Destroy();
-    // int save_stdout_no = dup(fileno(stdout));
-    // std::fflush(stdout);
-    // std::freopen(txCountFilename.c_str(), "w", stdout);
+    std::string txCountFilename = "output/MytestCountsMesh-part-" + lexical_cast<std::string>(MpiInterface::GetSystemId()) + ".txt";
+    int save_stdout_no = dup(fileno(stdout));
+    std::fflush(stdout);
+    std::freopen(txCountFilename.c_str(), "w", stdout);
     ServerTx(nullptr, "", true);
     // std::fflush();
-    // std::fflush(stdout);
-    // dup2(save_stdout_no ,fileno(stdout));
-    // close(save_stdout_no);
-    // std::freopen(nullptr, "w", stdout);
+    std::fflush(stdout);
+    dup2(save_stdout_no, fileno(stdout));
+    close(save_stdout_no);
+    std::freopen(nullptr, "w", stdout);
 
     std::cout << GlobalMetricsGatherer::GetWallclockTime() << ": BitTorent Video-on-Demand simulation finished successfully :=)" << std::endl;
     MpiInterface::Disable();
