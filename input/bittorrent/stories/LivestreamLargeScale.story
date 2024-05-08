@@ -63,7 +63,7 @@
 0h0m0s: all clients set video prebuffering 0h0m15s
 //
 //
-0h0m0s: tracker set update interval 0h0m60s
+0h0m0s: tracker set update interval 0h0m3s
 0h0m0s: tracker set strategy treeFirst
 //
 //
