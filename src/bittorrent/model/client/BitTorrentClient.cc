@@ -96,14 +96,10 @@ BitTorrentClient::~BitTorrentClient()
 TypeId
 BitTorrentClient::GetTypeId()
 {
-    static TypeId tid =
-        TypeId("ns3::BitTorrentClient")
-            .SetParent<Application>()
-            .AddConstructor<BitTorrentClient>();
-            // .AddTraceSource("Tx", "A packet has been sent.", MakeTraceSourceAccessor(&BitTorrentClient::m_txTrace), "ns3::Packet::TracedCallback");
+    static TypeId tid = TypeId("ns3::BitTorrentClient").SetParent<Application>().AddConstructor<BitTorrentClient>();
+    // .AddTraceSource("Tx", "A packet has been sent.", MakeTraceSourceAccessor(&BitTorrentClient::m_txTrace), "ns3::Packet::TracedCallback");
     return tid;
 }
-
 
 void
 BitTorrentClient::StopApplication()
@@ -704,12 +700,13 @@ BitTorrentClient::UnregisterPeer(Ptr<Peer> peer)
             hashToStreamIt->second.erase(peer);
         }
 
-        hashToStreamIt = m_upperStreamList.find(streamHash);
-        if (hashToStreamIt != m_upperStreamList.end())
-        {
-            hashToStreamIt->second.erase(peer);
-        }
+        // hashToStreamIt = m_upperStreamList.find(peer);
+        // if (hashToStreamIt != m_upperStreamList.end())
+        // {
+        //     hashToStreamIt->second.erase(peer);
+        // }
     }
+    m_upperStreamList.erase(peer);
     m_peerList.erase(it);
     // for (std::map<Ptr<Peer>, std::set<std::string>>::iterator it = m_peerList.begin(); it != m_peerList.end();)
     // {
@@ -748,7 +745,8 @@ BitTorrentClient::SubscribeStream(Ptr<Peer> peer, std::string streamHash)
         else if (m_clientType == BT_STREAM_PEERTYPE_PCDN)
         {
             // YTODO currently we think no sub = no upperstream, but maybe we can hold or pre-create the upperstream
-            NS_ASSERT(m_upperStreamList.find(streamHash) == m_upperStreamList.end());
+            // NS_ASSERT(m_upperStreamList.find(peer) == m_upperStreamList.end());
+
             GetSeederEvent(streamHash);
         }
         else
@@ -810,15 +808,16 @@ BitTorrentClient::RegisterUpperStream(Ptr<Peer> peer, std::string streamHash)
         return;
     }
     m_peerList[peer].insert(streamHash);
-    if (m_upperStreamList.find(streamHash) == m_upperStreamList.end())
+    if (m_upperStreamList.find(peer) == m_upperStreamList.end())
     {
         if (m_clientType == BT_STREAM_PEERTYPE_CDN)
         {
             NS_FATAL_ERROR("CDN DO NOT HAVE UPPER STREAM");
         }
-        m_upperStreamList[streamHash] = std::set<Ptr<Peer>>();
+        // m_upperStreamList[streamHash] = std::set<Ptr<Peer>>();
+        // m_upperStreamList[streamHash] = std::set<Ptr<Peer>>();
     }
-    m_upperStreamList[streamHash].insert(peer);
+    m_upperStreamList.insert(peer);
 }
 
 void
@@ -833,29 +832,35 @@ BitTorrentClient::UnRegisterUpperStream(Ptr<Peer> peer, std::string streamHash)
     if (m_peerList[peer].empty())
     {
         // YTODO should we unregister or close connect to this peer?
+        // m_upperStreamList.erase(peer);
     }
-    if (m_upperStreamList.find(streamHash) == m_upperStreamList.end())
-    {
-        return;
-    }
-    m_upperStreamList[streamHash].erase(peer);
-    if (m_upperStreamList[streamHash].empty())
-    {
-        m_upperStreamList.erase(streamHash);
-        if (m_clientType == BT_STREAM_PEERTYPE_CDN)
-        {
-            NS_FATAL_ERROR("CDN DONT HAVE UPPER STREAM");
-        }
-        else if (m_clientType == BT_STREAM_PEERTYPE_PCDN)
-        {
-            // YTODO upper stream is empty, which case, should we unregister all downstreams?
-        }
-        else
-        {
-            // upper stream is empty, means already scheduled close connect event
-            // do nothing
-        }
-    }
+    // if (m_upperStreamList.find(peer) == m_upperStreamList.end())
+    // {
+    //     return;
+    // }
+    // if (m_upperStreamList[streamHash].empty())
+    // {
+    //     m_upperStreamList.erase(streamHash);
+    //     if (m_clientType == BT_STREAM_PEERTYPE_CDN)
+    //     {
+    //         NS_FATAL_ERROR("CDN DONT HAVE UPPER STREAM");
+    //     }
+    //     else if (m_clientType == BT_STREAM_PEERTYPE_PCDN)
+    //     {
+    //         // YTODO upper stream is empty, which case, should we unregister all downstreams?
+    //     }
+    //     else
+    //     {
+    //         // upper stream is empty, means already scheduled close connect event
+    //         // do nothing
+    //     }
+    // }
+}
+
+int
+BitTorrentClient::GetUpperStreamCount() const
+{
+    return m_upperStreamList.size();
 }
 
 void

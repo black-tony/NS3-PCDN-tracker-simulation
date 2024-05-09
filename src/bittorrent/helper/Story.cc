@@ -736,26 +736,30 @@ Story::ReadAndScheduleStory(std::string filePath, uint32_t simulationDuration)
             {
                 if (client)
                 {
+                    Ptr<UniformRandomVariable> uv = CreateObject<UniformRandomVariable>();
+
                     for (NodeContainer::Iterator it = affectedNodes.Begin(); it != affectedNodes.End(); ++it)
                     {
 #ifdef NS3_MPI
                         if (PeekPointer(*it)->GetSystemId() == MpiInterface::GetSystemId())
 #endif
                         {
-                            dynamic_cast<BitTorrentVideoClient*>(PeekPointer((*it)->GetApplication(0)))->SetStartTime(time);
+                            dynamic_cast<BitTorrentVideoClient*>(PeekPointer((*it)->GetApplication(0)))->SetStartTime(MilliSeconds(time.GetMilliSeconds() + uv->GetInteger(0, time2.GetMilliSeconds() - time.GetMilliSeconds())));
                         }
                     }
                     // SCHEDULE_CHAPTER_NOARGS(&BitTorrentVideoClient::StartApplication, BitTorrentVideoClient)
                 }
                 else
                 {
+                    Ptr<UniformRandomVariable> uv = CreateObject<UniformRandomVariable>();
+
                     for (NodeContainer::Iterator it = affectedNodes.Begin(); it != affectedNodes.End(); ++it)
                     {
 #ifdef NS3_MPI
                         if (PeekPointer(*it)->GetSystemId() == MpiInterface::GetSystemId())
 #endif
                         {
-                            dynamic_cast<BitTorrentTracker*>(PeekPointer((*it)->GetApplication(0)))->SetStartTime(time);
+                            dynamic_cast<BitTorrentTracker*>(PeekPointer((*it)->GetApplication(0)))->SetStartTime(MilliSeconds(time.GetMilliSeconds() + uv->GetInteger(0, time2.GetMilliSeconds() - time.GetMilliSeconds())));
                         }
                     }
                     // SCHEDULE_CHAPTER_NOARGS(&BitTorrentTracker::StartApplication, BitTorrentTracker)
@@ -1568,6 +1572,10 @@ Story::ReadAndScheduleStory(std::string filePath, uint32_t simulationDuration)
                     SCHEDULE_CHAPTER(&BitTorrentTracker::AddStreamHash, BitTorrentTracker, buffer);
 
                     // CALL_FUNCTION(AddStreamHash, BitTorrentTracker, buffer)
+                }
+                else if(buffer == "seeder")
+                {
+                    
                 }
                 else
                 {

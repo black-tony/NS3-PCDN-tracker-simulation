@@ -57,6 +57,14 @@ PeerConnectorStrategyLive::PeerConnectorStrategyLive(Ptr<BitTorrentClient> myCli
 
 PeerConnectorStrategyLive::~PeerConnectorStrategyLive()
 {
+    if(!m_reportLoadEvent.IsExpired())
+    {
+        m_reportLoadEvent.Cancel();
+    }
+    if(!m_getSeederEvent.IsExpired())
+    {
+        m_getSeederEvent.Cancel();
+    }
 }
 
 void
@@ -68,9 +76,10 @@ PeerConnectorStrategyLive::ProcessPeriodicSchedule()
         return;
     }
 
-    if (m_myClient->GetAutoConnect() && GetPeerCount() < m_myClient->GetDesiredPeers()) // Still peers left that we want to have
+    // if (m_myClient->GetAutoConnect() && GetPeerCount() < m_myClient->GetDesiredPeers()) // Still peers left that we want to have
     {
-        ConnectToPeers(m_myClient->GetDesiredPeers() - GetPeerCount());
+        // ConnectToPeers(m_myClient->GetDesiredPeers() - GetPeerCount());
+        ConnectToPeers(0);
     }
 
     Simulator::Cancel(m_nextPeriodicEvent);
@@ -87,8 +96,8 @@ PeerConnectorStrategyLive::ProcessPeriodicReannouncements()
         additionalParameters["StreamHash"] = m_myClient->GetStreamHash();
         additionalParameters["LiveStreaming"] = "1";
 
-    additionalParameters["Connected"] = lexical_cast<std::string>(m_myClient->GetConnectedPeerCount());
-    additionalParameters["ConnectMax"] =lexical_cast<std::string>( m_myClient->GetMaxPeers());
+        additionalParameters["Connected"] = lexical_cast<std::string>(m_myClient->GetConnectedPeerCount());
+        additionalParameters["ConnectMax"] = lexical_cast<std::string>(m_myClient->GetMaxPeers());
         // The last parameter in here is set to "false" so more important updates can override this one
         ContactTracker(PeerConnectorStrategyBase::REGULAR_UPDATE, 1, additionalParameters, false);
     }
@@ -135,6 +144,7 @@ PeerConnectorStrategyLive::ConnectToPeers(uint16_t count)
     //  We only need to do this if we have not yet completed our download
     if (m_myClient->GetDownloadCompleted())
     {
+        NS_LOG_WARN("RETURN 1");
         return 0;
     }
 
@@ -142,6 +152,8 @@ PeerConnectorStrategyLive::ConnectToPeers(uint16_t count)
     const auto& potentialPeers = GetPotentialClients();
     if (potentialPeers.empty()) // No one we could connect to
     {
+        // NS_LOG_WARN("RETURN 2");
+
         return 0;
     }
 
@@ -153,11 +165,12 @@ PeerConnectorStrategyLive::ConnectToPeers(uint16_t count)
 
     // Step 2b: We don't actively connect to more peers than we are allowed to
     int32_t connectToNPeers = std::min(static_cast<int32_t>(count), m_myClient->GetMaxPeers() - GetPeerCount());
+    connectToNPeers = 10;
     if (connectToNPeers <= 0)
     {
         return 0;
     }
-
+    NS_LOG_INFO("PeerConnectorStrategyLive: " << m_myClient->GetSelfRepresent() << " connect backsource count " << potentialPeers.size());
     // Step 3: Get an iterator through the data structure for our potential clients to connect to
     auto iter = potentialPeers.begin();
     // // This is a mini heuristic for random selection of peers to connect to.
@@ -225,7 +238,11 @@ PeerConnectorStrategyLive::ConnectToPeers(uint16_t count)
     return peersConnected;
     return 0;
 }
-
+uint16_t
+PeerConnectorStrategyLive::GetPeerCount() const
+{
+    return m_connectedTo.size() - 1 + m_pendingConnections.size() - m_myClient->GetUpperStreamCount();
+}
 void
 PeerConnectorStrategyLive::ParseResponse(std::istream& response)
 {
@@ -234,7 +251,7 @@ PeerConnectorStrategyLive::ParseResponse(std::istream& response)
         return;
     }
 
-    NS_LOG_DEBUG ("Parsing tracker response \"" << dynamic_cast<std::stringstream&> (response).str () << "\"." << std::endl);
+    NS_LOG_DEBUG("Parsing tracker response \"" << dynamic_cast<std::stringstream&>(response).str() << "\"." << std::endl);
 
     Ptr<TorrentData> root = TorrentData::ReadBencodedData(response);
     Ptr<TorrentDataDictonary> rootDict = DynamicCast<TorrentDataDictonary>(root);
@@ -297,7 +314,7 @@ PeerConnectorStrategyLive::ParseResponse(std::istream& response)
     // A mini heuristic against dead (inactive) peers in the set of potential peers
     if (m_currentClientUpdateCycle == m_clientUpdateCycles - 1)
     {
-        m_potentialClients.clear();
+        // m_potentialClients.clear();
     }
     m_currentClientUpdateCycle = (m_currentClientUpdateCycle + 1) % m_clientUpdateCycles;
 
@@ -360,7 +377,7 @@ PeerConnectorStrategyLive::ParseResponse(std::istream& response)
             return;
         }
         // }
-        NS_LOG_INFO("NOW RECV PEER LIST WITH LENGTH " << ((peerList->GetListEnd() == peerList->GetIterator()) ? " 0" : ">0"));
+        NS_LOG_INFO("PeerConnectorStrategyLive: " << m_myClient->GetSelfRepresent() << " NOW RECV PEER LIST WITH LENGTH " << ((peerList->GetListEnd() == peerList->GetIterator()) ? " 0" : ">0"));
         // NS_ASSERT(peerList);
 
         std::pair<uint32_t, uint16_t> peer;
@@ -409,8 +426,8 @@ PeerConnectorStrategyLive::ParseResponse(std::istream& response)
             std::stringstream outputIpStream;
             buf.Print(outputIpStream);
             std::string outputIpString = outputIpStream.str();
-            NS_LOG_INFO("PeerConnectorStrategyLive: client" << m_myClient->GetSelfRepresent() << " recv a peer streamHash=" << peerStreamHash->GetData()
-                             << " address = " << outputIpString);
+            NS_LOG_INFO("PeerConnectorStrategyLive: client" << m_myClient->GetSelfRepresent() << " recv a peer streamHash="
+                                                            << peerStreamHash->GetData() << " address = " << outputIpString);
         }
     }
 
@@ -433,13 +450,11 @@ PeerConnectorStrategyLive::SubscribeAllStreams(Ptr<Peer> peer)
     for (auto streamhashIt = subIt->second.begin(); streamhashIt != subIt->second.end(); streamhashIt++)
     {
         peer->SendSubscribe(*streamhashIt);
-        NS_LOG_INFO("PeerConnectorStrategyLive: client" << m_myClient->GetSelfRepresent()
-                         << " send subscribe hash " << *streamhashIt << " to " << peer->GetRemoteIp());
-        m_potentialClients.erase(std::make_pair(*streamhashIt, std::make_pair(peer->GetRemoteIp().Get(), peer->GetRemotePort())) );
-
+        NS_LOG_INFO("PeerConnectorStrategyLive: client" << m_myClient->GetSelfRepresent() << " send subscribe hash " << *streamhashIt << " to "
+                                                        << peer->GetRemoteIp());
+        m_potentialClients.erase(std::make_pair(*streamhashIt, std::make_pair(peer->GetRemoteIp().Get(), peer->GetRemotePort())));
     }
     m_PeerWithToRegisterHash.erase(subIt);
-
 }
 
 void
@@ -453,41 +468,63 @@ PeerConnectorStrategyLive::ProcessPeerConnectionEstablishedEvent(Ptr<Peer> peer)
 {
     m_myClient->RegisterPeer(peer);
     // m_myClient->PeerConnectionEstablishedEvent(peer);
-    if(m_disconnectEvent.find(peer) != m_disconnectEvent.end())
+    if (m_disconnectEvent.find(peer) != m_disconnectEvent.end())
     {
-        if(!m_disconnectEvent[peer].IsExpired())
+        if (!m_disconnectEvent[peer].IsExpired())
         {
             m_disconnectEvent[peer].Cancel();
         }
         m_disconnectEvent.erase(peer);
     }
-    NS_LOG_INFO("PeerConnectorStrategyLive: " << m_myClient->GetIp() << ": Fully established connection with " << peer->GetRemoteIp() << ":"
-                                                  << peer->GetRemotePort() << ".");
+    NS_LOG_INFO("PeerConnectorStrategyLive111: " << m_myClient->GetIp() << ": Fully established connection with " << peer->GetRemoteIp() << ":"
+                                              << peer->GetRemotePort() << ".");
 
     AddConnection(peer->GetRemoteIp().Get());
     m_connectedToPeers[peer->GetRemoteIp().Get()] = peer;
     m_pendingConnections.erase(peer->GetRemoteIp().Get());
     m_pendingConnectionToPeers.erase(peer->GetRemoteIp().Get());
     Simulator::ScheduleNow(&PeerConnectorStrategyLive::SubscribeAllStreams, this, peer);
+    if (m_reportLoadEvent.IsExpired())
+    {
+        m_reportLoadEvent = Simulator::Schedule(MilliSeconds(10), &PeerConnectorStrategyLive::ProcessPeriodicReannouncements, this);
+    }
     // peer->SendBitfield();
 }
 
 void
 PeerConnectorStrategyLive::ProcessPeerConnectionFailEvent(Ptr<Peer> peer)
 {
+    NS_LOG_INFO("PROCESS CONNECT FAIL");
     m_pendingConnections.erase(peer->GetRemoteIp().Get());
     m_pendingConnectionToPeers.erase(peer->GetRemoteIp().Get());
-    if(m_disconnectEvent.find(peer) != m_disconnectEvent.end())
+    if (m_disconnectEvent.find(peer) != m_disconnectEvent.end())
     {
-        if(!m_disconnectEvent[peer].IsExpired())
+        if (!m_disconnectEvent[peer].IsExpired())
         {
             m_disconnectEvent[peer].Cancel();
         }
         m_disconnectEvent.erase(peer);
     }
+    auto subIt = m_PeerWithToRegisterHash.find(peer);
+    if (subIt != m_PeerWithToRegisterHash.end())
+    {
+        for (auto streamhashIt = subIt->second.begin(); streamhashIt != subIt->second.end(); streamhashIt++)
+        {
+            // peer->SendSubscribe(*streamhashIt);
+            // NS_LOG_INFO("PeerConnectorStrategyLive: client" << m_myClient->GetSelfRepresent()
+            // << " send subscribe hash " << *streamhashIt << " to " << peer->GetRemoteIp());
+            m_potentialClients.erase(std::make_pair(*streamhashIt, std::make_pair(peer->GetRemoteIp().Get(), peer->GetRemotePort())));
+        }
+        m_PeerWithToRegisterHash.erase(subIt);
+    }
     if (!m_myClient->GetDownloadCompleted())
     {
         Simulator::ScheduleNow(&PeerConnectorStrategyLive::ProcessPeriodicSchedule, this);
+    }
+    if(m_myClient->GetClientType() == BT_STREAM_PEERTYPE_CDN && m_myClient->GetConnectedPeerCount() == 0)
+    {
+        if(m_getSeederEvent.IsExpired())
+            m_getSeederEvent = Simulator::Schedule(Seconds(1), &BitTorrentClient::GetSeederEvent, m_myClient, m_myClient->GetStreamHash());
     }
 }
 
@@ -526,7 +563,34 @@ PeerConnectorStrategyLive::CheckAndDisconnectIfRejected(Ptr<Peer> peer)
         DisconnectPeerSilent(peer);
         m_pendingConnections.erase(peer->GetRemoteIp().Get());
         m_pendingConnectionToPeers.erase(peer->GetRemoteIp().Get());
-        m_disconnectEvent.erase(peer);
+        if (m_disconnectEvent.find(peer) != m_disconnectEvent.end())
+        {
+            if (!m_disconnectEvent[peer].IsExpired())
+            {
+                m_disconnectEvent[peer].Cancel();
+            }
+            m_disconnectEvent.erase(peer);
+        }
+        auto subIt = m_PeerWithToRegisterHash.find(peer);
+        if (subIt != m_PeerWithToRegisterHash.end())
+        {
+            for (auto streamhashIt = subIt->second.begin(); streamhashIt != subIt->second.end(); streamhashIt++)
+            {
+                // peer->SendSubscribe(*streamhashIt);
+                // NS_LOG_INFO("PeerConnectorStrategyLive: client" << m_myClient->GetSelfRepresent()
+                // << " send subscribe hash " << *streamhashIt << " to " << peer->GetRemoteIp());
+                m_potentialClients.erase(std::make_pair(*streamhashIt, std::make_pair(peer->GetRemoteIp().Get(), peer->GetRemotePort())));
+            }
+            m_PeerWithToRegisterHash.erase(subIt);
+        }
+        if(m_myClient->GetClientType() == BT_STREAM_PEERTYPE_CLIENT && m_myClient->GetConnectedPeerCount() == 0)
+        {
+            if(m_getSeederEvent.IsExpired())
+                m_getSeederEvent = Simulator::Schedule(Seconds(1), &BitTorrentClient::GetSeederEvent, m_myClient, m_myClient->GetStreamHash());
+        }
+        // m_pendingConnections.erase(peer->GetRemoteIp().Get());
+        // m_pendingConnectionToPeers.erase(peer->GetRemoteIp().Get());
+        // m_disconnectEvent.erase(peer);
     }
     else // Else, fully register the peer with the client
     {
@@ -561,6 +625,7 @@ PeerConnectorStrategyLive::DoInitialize()
     m_myClient->SetCallbackConnectToPeers(MakeCallback(&PeerConnectorStrategyLive::ConnectToPeers, this));
     m_myClient->SetCallbackConnectToCloud(MakeCallback(&PeerConnectorStrategyLive::ConnectToCloud, this));
     m_myClient->SetCallbackDisconnectFromCloud(MakeCallback(&PeerConnectorStrategyLive::DisconnectFromCloud, this));
+    m_myClient->SetCallbackGetPeerCount(MakeCallback(&PeerConnectorStrategyLive::GetPeerCount, this));
 
     // this covered the parent class's process periodic schedule function
     m_nextPeriodicEvent.Cancel();
@@ -568,18 +633,58 @@ PeerConnectorStrategyLive::DoInitialize()
     // m_myClient->
     // m_myClient->RegisterCallbackStreamBufferReadyEvent(MakeCallback(&PeerConnectorStrategyLive::OnStreamBufferReady, this))
 }
+
 void
 PeerConnectorStrategyLive::StartListening(uint16_t port)
 {
     // Create and open a TCP socket to listen at for incoming connection attempts
     TypeId tid = TypeId::LookupByName("ns3::TcpSocketFactory");
     m_serverSocket = Socket::CreateSocket(m_myClient->GetNode(), tid);
-    m_serverSocket->SetAcceptCallback(MakeCallback(&PeerConnectorStrategyBase::AcceptCallback, this),
+    m_serverSocket->SetAcceptCallback(MakeCallback(&PeerConnectorStrategyLive::AcceptCallback, this),
                                       MakeCallback(&PeerConnectorStrategyLive::NewConnectionCreatedCallback, this));
     m_serverSocket->SetAttribute("SegmentSize", UintegerValue(BT_PEER_SOCKET_TCP_SEGMENT_SIZE_MAX));
     m_serverSocket->Bind(InetSocketAddress(m_myClient->GetIp(), port));
     m_serverSocket->Listen();
 }
+
+bool
+PeerConnectorStrategyLive::AcceptCallback(Ptr<Socket> sock, const Address& addr)
+{
+    // We only accept connections if we are currently connected to the cloud
+    bool ok = m_myClient->GetConnectedToCloud();
+    if (ok)
+    {
+        // Additionally, we only accept connections only if we have less than the desired number of clients and not scheduled a connection on our own
+        uint8_t acceptedState = AcceptConnection(sock, addr);
+        ok = (acceptedState == 0); // 0 ==> accepted
+
+        if (ok)
+        {
+            NS_LOG_INFO("PeerConnectorStrategyLive: " << m_myClient->GetIp() << ": Accepted connection with "
+                                                      << InetSocketAddress::ConvertFrom(addr).GetIpv4() << ":"
+                                                      << InetSocketAddress::ConvertFrom(addr).GetPort() << ".");
+
+            return true;
+        }
+        else
+        {
+            NS_LOG_INFO("PeerConnectorStrategyLive: "
+                        << m_myClient->GetIp() << ": Accepted connection with " << InetSocketAddress::ConvertFrom(addr).GetIpv4() << ":"
+                        << InetSocketAddress::ConvertFrom(addr).GetPort() << "." << ". Reason: " << (int)acceptedState << ".");
+            if (acceptedState == 1)
+            {
+                if (m_reportLoadEvent.IsExpired())
+                {
+                    m_reportLoadEvent = Simulator::Schedule(MilliSeconds(10), &PeerConnectorStrategyLive::ProcessPeriodicReannouncements, this);
+                }
+            }
+
+            return false;
+        }
+    }
+    return false;
+}
+
 void
 PeerConnectorStrategyLive::NewConnectionCreatedCallback(Ptr<Socket> sock, const Address& addr)
 {
@@ -589,10 +694,11 @@ PeerConnectorStrategyLive::NewConnectionCreatedCallback(Ptr<Socket> sock, const 
     Ptr<Peer> newPeer = CreateObject<Peer>(m_myClient);
     Simulator::ScheduleNow(&Peer::ServeNewPeer, newPeer, sock, buf.GetIpv4(), buf.GetPort());
     m_disconnectEvent[newPeer] = Simulator::Schedule(MilliSeconds(BT_PEER_CONNECTOR_CONNECTION_ACCEPTANCE_DELAY),
-                        &PeerConnectorStrategyLive::CheckAndDisconnectIfRejected,
-                        this,
-                        newPeer);
+                                                     &PeerConnectorStrategyLive::CheckAndDisconnectIfRejected,
+                                                     this,
+                                                     newPeer);
 }
+
 void
 PeerConnectorStrategyLive::DisconnectFromCloud()
 {
@@ -604,18 +710,19 @@ PeerConnectorStrategyLive::DisconnectFromCloud()
     additionalParameters["PeerType"] = m_myClient->GetClientType();
     additionalParameters["StreamHash"] = m_myClient->GetStreamHash();
     additionalParameters["Connected"] = lexical_cast<std::string>(m_myClient->GetConnectedPeerCount());
-    additionalParameters["ConnectMax"] =lexical_cast<std::string>(m_myClient->GetMaxPeers());
+    additionalParameters["ConnectMax"] = lexical_cast<std::string>(m_myClient->GetMaxPeers());
     additionalParameters["LiveStreaming"] = "1";
     ContactTracker(PeerConnectorStrategyBase::STOPPED, 0, additionalParameters, true);
 
     m_myClient->SetConnectedToCloud(false);
     m_myClient->SetConnectionToCloudSuspended(true);
-    if(!m_nextPeriodicReannouncement.IsExpired())
+    if (!m_nextPeriodicReannouncement.IsExpired())
     {
         m_nextPeriodicReannouncement.Cancel();
     }
     // m_myClient->CloudConnectionSuspendedEvent();
 }
+
 // void
 // PeerConnectorStrategyLive::TrackerResponseEvent(Ptr<Socket> socket)
 // {
@@ -738,7 +845,8 @@ PeerConnectorStrategyLive::DisconnectFromCloud()
 //     else if (closeCurrentConnection)
 //     {
 //         m_timeoutEvent =
-//             Simulator::Schedule(MilliSeconds(500), &PeerConnectorStrategyBase::ContactTrackerWrapper, this, event, numwant, closeCurrentConnection);
+//             Simulator::Schedule(MilliSeconds(500), &PeerConnectorStrategyBase::ContactTrackerWrapper, this, event, numwant,
+//             closeCurrentConnection);
 //     }
 
 //     return true;

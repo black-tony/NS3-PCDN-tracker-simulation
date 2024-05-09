@@ -165,7 +165,7 @@ class BitTorrentClient : public Application
         m_peerList; // Contains the list of all currently associated Peer objects (i.e., communication partners)
     std::map<std::string, std::set<Ptr<Peer>>>
         m_subscriptionList;                              // Contains the list of all currently associated Peer objects (i.e., communication partners)
-    std::map<std::string, std::set<Ptr<Peer>>>
+    std::set<Ptr<Peer>>
         m_upperStreamList;                              // Contains the list of all currently associated Peer objects (i.e., communication partners)
     std::map<std::string, EventId> m_dataAvailableTimer; // Contains the list of all currently associated Peer objects (i.e., communication partners)
 
@@ -887,6 +887,7 @@ public:
 
     void UnRegisterUpperStream(Ptr<Peer> peer, std::string streamHash);
 
+    int GetUpperStreamCount() const;
 
     void StreamBufferReady(std::string streamHash);
 
