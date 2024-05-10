@@ -60,7 +60,7 @@ private:
   uint32_t m_externalAppCount;         // The number of external applications (real-world cllients) registered
   uint32_t m_finishedAppCount;         // The number of applications which have announced to have finished a download
   uint32_t m_finishedExternalAppCount; // The number of external applications which have announced to have finished a download
-
+  bool m_nulloutput;
   // Automatic exiting of simulations when a specific number of finished applications has been reached
   // int64_t m_stopThreshold;             // The number of applications that should have finished before the GMG stops the simulation
   double  m_stopFraction;              // The fraction of clients that should have finished before the GMG stops the simulation
@@ -96,7 +96,10 @@ public:
    *  If logging to file is disabled, all logging output is redirected to the standard output.
    */
   void SetFileNamePrefix (const std::string fileNamePrefix, bool enableLogging);
-
+  void SetNulloutput(bool nullout)
+  {
+    m_nulloutput = nullout;
+  }
   /**
    * @returns the general prefix for the names of output files. File output is enabled if the returned value is not equal to "undefined".
    */

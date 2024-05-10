@@ -115,6 +115,8 @@ void GlobalMetricsGatherer::SetStopFraction (double stopFraction, double externa
 
 void GlobalMetricsGatherer::WriteToFile (const std::string metricName, const std::string metricString, bool timestamp) const
 {
+  if(m_nulloutput)
+    return;
   if (!m_fileOutputEnabled)
     {
       std::cout << metricName;

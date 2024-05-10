@@ -52,14 +52,19 @@ NS_LOG_COMPONENT_DEFINE("BitTorrentLiveSimulation");
 void
 ShowTimePeriodic()
 {
-    std::cout << "It is now " << Simulator::Now().GetSeconds() << "s (" << GlobalMetricsGatherer::GetWallclockTime() << ")" << std::endl;
+#ifdef NS3_MPI
+    if (MpiInterface::GetSystemId() == 0)
+#endif
+    {
+        NS_LOG_INFO("It is now " << Simulator::Now().GetSeconds() << "s (" << GlobalMetricsGatherer::GetWallclockTime() << ")");
+    }
     Simulator::Schedule(Seconds(1.0), ShowTimePeriodic);
 }
 
 void
 ServerTx(Ptr<const Packet> packet, std::string clienttype, bool output)
 {
-    static std::map<std::string, uint32_t> record;
+    static std::map<std::string, double> record;
     // std::cout << "it.first" << "\t" << "it.second" << std::endl;
 
     if (output)
@@ -83,24 +88,17 @@ main(int argc, char* argv[])
     // LogComponentEnableAll (LOG_PREFIX_FUNC);
 
     // LogComponentEnable("BitTorrentHttpClient", LOG_LEVEL_ALL);
-    LogComponentEnable("bittorrent::Peer", LOG_LEVEL_ALL);
+    // LogComponentEnable("bittorrent::Peer", LOG_LEVEL_ALL);
     // LogComponentEnable("bittorrent::BitTorrentClient", LOG_LEVEL_INFO);
     // LogComponentEnable("bittorrent::RequestSchedulingStrategyLive", LOG_LEVEL_INFO);
     // LogComponentEnable("BitTorrentTracker", LOG_LEVEL_ALL);
 
-    // LogComponentEnable ("TcpSocketBase", LOG_LEVEL_ALL);
+    LogComponentEnable("BitTorrentLiveSimulation", LOG_LEVEL_ALL);
 
     // LogComponentEnable ("bittorrent::PartSelectionStrategyBase", LOG_LEVEL_ALL);
-    LogComponentEnable("bittorrent::PeerConnectorStrategyBase", LOG_LEVEL_ALL);
-    LogComponentEnable("bittorrent::PeerConnectorStrategyLive", LOG_LEVEL_INFO);
+    // LogComponentEnable("bittorrent::PeerConnectorStrategyBase", LOG_LEVEL_ALL);
+    // LogComponentEnable("bittorrent::PeerConnectorStrategyLive", LOG_LEVEL_INFO);
     // LogComponentEnable("bittorrent::VODSimBriteTopologyHelper", LOG_LEVEL_ALL);
-
-#ifdef NS3_MPI
-    // MPI setup -->
-    MpiInterface::Enable(&argc, &argv);
-    GlobalValue::Bind("SimulatorImplementationType", StringValue("ns3::DistributedSimulatorImpl"));
-    // <-- MPI setup
-#endif
 
 #ifdef BITTORRENT_EMULATION
     // Emulation setup (part 1) -->
@@ -114,6 +112,7 @@ main(int argc, char* argv[])
     std::string replacements = "";
     uint32_t simulationDuration = 25000;
     bool enableLogging = false;
+    bool nullmsg = false;
     std::string comment;
     CommandLine cmd;
     cmd.AddValue("story", "Name of the story input file, without \".story\" ending. Expected to reside within the ns3 directory tree", storyFileName);
@@ -124,8 +123,22 @@ main(int argc, char* argv[])
     cmd.AddValue("duration", "Length of the simulation in seconds", simulationDuration);
     cmd.AddValue("logging", "Full-scale logging (0 = off, 1 = on)", enableLogging);
     cmd.AddValue("comment", "A debugging comment; may be used to identify your simulation run", comment);
-    cmd.Parse(argc, argv);
+    cmd.AddValue("nullmsg", "Enable the use of null-message synchronization", nullmsg);
 
+    cmd.Parse(argc, argv);
+#ifdef NS3_MPI
+    // MPI setup -->
+    MpiInterface::Enable(&argc, &argv);
+    if (nullmsg)
+    {
+        GlobalValue::Bind("SimulatorImplementationType", StringValue("ns3::NullMessageSimulatorImpl"));
+    }
+    else
+    {
+        GlobalValue::Bind("SimulatorImplementationType", StringValue("ns3::DistributedSimulatorImpl"));
+    }
+    // <-- MPI setup
+#endif
     std::cout << "Setting up BitTorrent Video-on-Demand simulation..." << std::endl;
 
     NodeContainer routerNodes;
@@ -188,6 +201,7 @@ main(int argc, char* argv[])
     gatherer->SetFileNamePrefix(story->GetSimulationId(), story->GetLoggingToFile());
     gatherer->RegisterWithApplications(nodeApplicationContainer);
     gatherer->AnnounceExternalClients(tapNodes.GetN());
+    gatherer->SetNulloutput(true);
 #ifndef BITTORRENT_EMULATION
     gatherer->SetStopFraction(1.0, 1.0);
 #else

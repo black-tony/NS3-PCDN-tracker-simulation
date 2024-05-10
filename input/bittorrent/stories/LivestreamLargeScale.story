@@ -6,27 +6,39 @@
 //
 0h0m0s: simulation set folder input/bittorrent/torrent-data
 0h0m0s: simulation set file input/bittorrent/torrent-data/10MB-full.dat.torrent
-0h0m0s: topology set file input/bittorrent/topology/dfn-like.brite
+0h0m0s: topology set file input/bittorrent/topology/dfn-like-large.brite
 0h0m0s: topology add tracker
 0h0m0s: topology set delays min 0 max 0
 //
 //
-0h0m0s: topology add clients count 1 type point-to-point uplink 100Mbps downlink 100Mbps delay 0ms
+0h0m0s: topology add clients count 1 type point-to-point uplink 1000Mbps downlink 1000Mbps delay 0ms
 0h0m0s: client 1 join group CDN
-0h0m0s: topology add clients count 10 type point-to-point uplink 50Mbps downlink 100Mbps delay 0ms
-0h0m0s: clients 2 to 11 join group PCDN
+0h0m0s: topology add clients count 100 type point-to-point uplink 1000Mbps downlink 100Mbps delay 0ms
+0h0m0s: clients 2 to 101 join group PCDN
 //0h0m0s: group CDN leave group PCDN
-0h0m0s: topology add clients count 100 type point-to-point uplink 448kbps downlink 10Mbps delay 0ms
-0h0m0s: clients 12 to 111 join group leechers
-0h0m0s: clients 12 to 30 set streamhash 2
-0h0m0s: clients 31 to 60 set streamhash 4
-0h0m0s: clients 60 to 80 set streamhash 6
-0h0m0s: clients 80 to 101 set streamhash 8
+0h0m0s: topology add clients count 2000 type point-to-point uplink 448kbps downlink 10Mbps delay 0ms
+0h0m0s: clients 102 to 2101 join group leechers
+0h0m0s: clients 102 to 301 set streamhash 2
+0h0m0s: clients 302 to 501 set streamhash 3
+0h0m0s: clients 502 to 701 set streamhash 4
+0h0m0s: clients 702 to 901 set streamhash 5
+0h0m0s: clients 902 to 1101 set streamhash 6
+0h0m0s: clients 1102 to 1301 set streamhash 7
+0h0m0s: clients 1302 to 1501 set streamhash 8
+0h0m0s: clients 1502 to 1701 set streamhash 9
+0h0m0s: clients 1702 to 1901 set streamhash 10
+0h0m0s: clients 1902 to 2101 set streamhash 11
+//0h0m0s: clients 80 to 101 set streamhash 8
 0h0m0s: tracker set streamhash 2
+0h0m0s: tracker set streamhash 3
 0h0m0s: tracker set streamhash 4
+0h0m0s: tracker set streamhash 5
 0h0m0s: tracker set streamhash 6
+0h0m0s: tracker set streamhash 7
 0h0m0s: tracker set streamhash 8
-
+0h0m0s: tracker set streamhash 9
+0h0m0s: tracker set streamhash 10
+0h0m0s: tracker set streamhash 11
 //0h0m0s: group PCDN leave group leechers
 //0h0m0s: group CDN leave group leechers
 //
@@ -64,23 +76,37 @@
 //
 //
 0h0m0s: tracker set update interval 0h0m3s
-0h0m0s: tracker set strategy treeFirst
+0h0m0s: tracker set strategy random
 //
 //
+
+0h0m0s: client 102 leave group leechers
+0h0m0s: client 302 leave group leechers
+0h0m0s: client 502 leave group leechers
+0h0m0s: client 702 leave group leechers
+0h0m0s: client 902 leave group leechers
+0h0m0s: client 1102 leave group leechers
+0h0m0s: client 1302 leave group leechers
+0h0m0s: client 1502 leave group leechers
+0h0m0s: client 1702 leave group leechers
+0h0m0s: client 1902 leave group leechers
+
+0h0m0s: client 102  join group starters
+0h0m0s: client 302  join group starters
+0h0m0s: client 502  join group starters
+0h0m0s: client 702  join group starters
+0h0m0s: client 902  join group starters
+0h0m0s: client 1102 join group starters
+0h0m0s: client 1302 join group starters
+0h0m0s: client 1502 join group starters
+0h0m0s: client 1702 join group starters
+0h0m0s: client 1902 join group starters
+
 0h0m0s: group PCDN init
 0h0m0s: group CDN init
-
-0h0m0s: client 12 leave group leechers
-0h0m0s: client 31 leave group leechers
-0h0m0s: client 60 leave group leechers
-0h0m0s: client 80 leave group leechers
-
-0h0m0s: client 12 join group starters
-0h0m0s: client 31 join group starters
-0h0m0s: client 60 join group starters
-0h0m0s: client 80 join group starters
 0h0m5s: group starters init
-0h0m15s: group leechers init
+from 0h0m12s until 0h1m17s group leechers init
+
 //
 // 0h0m16s: client 6 leave cloud
 // 0h0m26s: client 6 rejoin cloud
