@@ -18,18 +18,23 @@ if args.prefix:
     # print(args.prefix.format("222"))
     
 ans = {}
+max_time = 0
 for i in range(args.mpiproc):
     now_filename = output_fileformat.format(i)
     now_filename = now_filename + ".txt"
     with open(now_filename, "r") as f:
         for line in f:
             linesplit = line.split()
-            if(len(linesplit) == 2):
-                no_unit = linesplit[1].removesuffix("MB")
+            if(len(linesplit) == 3):
+                no_unit = linesplit[2].removesuffix("MB")
+                now_time = linesplit[0].removesuffix("s")
+                max_time = max(max_time, int(now_time))
                 # print(no_unit)
-                ans[linesplit[0]] = float(no_unit)
+                if linesplit[0] not in ans.keys():
+                    ans[linesplit[0]] = {"PCDN" : 0, "CDN" : 0, "CLIENT" : 0}
+                ans[linesplit[0]][linesplit[1]] += float(no_unit)
             # print(line.split())
 
-for index, value in ans.items():
+for index, value in ans[f"{max_time}s"].items():
     print(f"{index} : {value}MB")
-print(f"amplification = {ans['PCDN']} / {ans['CDN']} = {ans['PCDN'] / ans['CDN']}")
+print(f"amplification = {ans[f'{max_time}s']['PCDN']} / {ans[f'{max_time}s']['CDN']} = {ans[f'{max_time}s']['PCDN'] / ans[f'{max_time}s']['CDN']}")

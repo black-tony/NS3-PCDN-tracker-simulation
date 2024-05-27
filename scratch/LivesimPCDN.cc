@@ -38,6 +38,7 @@
 #include "ns3/simulator.h"
 #include "ns3/stats-module.h"
 
+#include <fstream>
 #ifdef NS3_MPI
 #include "ns3/mpi-interface.h"
 
@@ -49,17 +50,7 @@ using namespace bittorrent;
 
 NS_LOG_COMPONENT_DEFINE("BitTorrentLiveSimulation");
 
-void
-ShowTimePeriodic()
-{
-#ifdef NS3_MPI
-    if (MpiInterface::GetSystemId() == 0)
-#endif
-    {
-        NS_LOG_INFO("It is now " << Simulator::Now().GetSeconds() << "s (" << GlobalMetricsGatherer::GetWallclockTime() << ")");
-    }
-    Simulator::Schedule(Seconds(1.0), ShowTimePeriodic);
-}
+static std::string txCountFilename;
 
 void
 ServerTx(Ptr<const Packet> packet, std::string clienttype, bool output)
@@ -69,9 +60,21 @@ ServerTx(Ptr<const Packet> packet, std::string clienttype, bool output)
 
     if (output)
     {
-        for (const auto& it : record)
+        if (!txCountFilename.empty())
         {
-            std::cout << it.first << "\t" << 1.0 * it.second / 1024 / 1024 << "MB" << std::endl;
+            std::ofstream fout(txCountFilename, std::ios::app);
+            for (const auto& it : record)
+            {
+                fout << Simulator::Now().GetSeconds() << "s\t" << it.first << "\t" << 1.0 * it.second / 1024 / 1024 << "MB" << std::endl;
+            }
+            fout.close();
+        }
+        else
+        {
+            for (const auto& it : record)
+            {
+                std::cout << Simulator::Now().GetSeconds() << "s\t" << it.first << "\t" << 1.0 * it.second / 1024 / 1024 << "MB" << std::endl;
+            }
         }
         return;
     }
@@ -80,6 +83,20 @@ ServerTx(Ptr<const Packet> packet, std::string clienttype, bool output)
         record[clienttype] = 0;
     }
     record[clienttype] += packet->GetSize();
+}
+
+void
+ShowTimePeriodic()
+{
+#ifdef NS3_MPI
+    if (MpiInterface::GetSystemId() == 0)
+#endif
+    {
+        NS_LOG_INFO("It is now " << Simulator::Now().GetSeconds() << "s (" << GlobalMetricsGatherer::GetWallclockTime() << ")");
+    }
+    ServerTx(nullptr, "", true);
+
+    Simulator::Schedule(Seconds(1.0), ShowTimePeriodic);
 }
 
 int
@@ -245,22 +262,24 @@ main(int argc, char* argv[])
     // Ptr<OutputStreamWrapper> routingStream =
     //           Create<OutputStreamWrapper>("nix-simple-ipv4.routes", std::ios::out);
     // Ipv4NixVectorHelper::PrintRoutingTableAllAt(Seconds(8), routingStream);
+    txCountFilename = "output/MytestCountsMesh-part-" + lexical_cast<std::string>(MpiInterface::GetSystemId()) + ".txt";
+    fout.open(txCountFilename);
+    fout.close();
     std::cout << "Starting BitTorrent Video-on-Demand simulation..." << std::endl;
     Simulator::ScheduleNow(ShowTimePeriodic);
     Simulator::Stop(Seconds(simulationDuration) + MilliSeconds(1));
     gatherer->WriteToFile("simulation-started", GlobalMetricsGatherer::GetWallclockTime(), false);
     Simulator::Run();
     Simulator::Destroy();
-    std::string txCountFilename = "output/MytestCountsMesh-part-" + lexical_cast<std::string>(MpiInterface::GetSystemId()) + ".txt";
-    int save_stdout_no = dup(fileno(stdout));
-    std::fflush(stdout);
-    std::freopen(txCountFilename.c_str(), "w", stdout);
+    // int save_stdout_no = dup(fileno(stdout));
+    // std::fflush(stdout);
+    // std::freopen(txCountFilename.c_str(), "w", stdout);
     ServerTx(nullptr, "", true);
     // std::fflush();
-    std::fflush(stdout);
-    dup2(save_stdout_no, fileno(stdout));
-    close(save_stdout_no);
-    std::freopen(nullptr, "w", stdout);
+    // std::fflush(stdout);
+    // dup2(save_stdout_no, fileno(stdout));
+    // close(save_stdout_no);
+    // std::freopen(nullptr, "w", stdout);
 
     std::cout << GlobalMetricsGatherer::GetWallclockTime() << ": BitTorent Video-on-Demand simulation finished successfully :=)" << std::endl;
     MpiInterface::Disable();

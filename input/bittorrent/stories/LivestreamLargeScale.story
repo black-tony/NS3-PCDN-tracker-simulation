@@ -76,7 +76,8 @@
 //
 //
 0h0m0s: tracker set update interval 0h0m3s
-0h0m0s: tracker set strategy random
+//0h0m0s: tracker set strategy random
+0h0m0s: tracker set strategy treeFirst
 //
 //
 
